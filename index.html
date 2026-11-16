@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>실내자전거 트래커</title>
+<style>
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --surface2:#eceef2; --text:#141820; --muted:#5d6572;
+  --border:#dbdfe5; --accent:#ff6a2b; --accent-ink:#ffffff; --accent-soft:#ffe6da;
+  --blue:#2f7cf6; --good:#1b9a5c; --danger:#d63a3a; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1014; --surface:#171a20; --surface2:#20242c; --text:#eef1f5; --muted:#99a2ae;
+    --border:#2a2f38; --accent:#ff7a3d; --accent-ink:#1a0d05; --accent-soft:#3a2217;
+    --blue:#5b9bff; --good:#3cc47f; --danger:#ff5d5d; --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1014; --surface:#171a20; --surface2:#20242c; --text:#eef1f5; --muted:#99a2ae;
+  --border:#2a2f38; --accent:#ff7a3d; --accent-ink:#1a0d05; --accent-soft:#3a2217;
+  --blue:#5b9bff; --good:#3cc47f; --danger:#ff5d5d; --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:17px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+input,select,button{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+button{cursor:pointer;touch-action:manipulation}
+[hidden]{display:none!important}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 16px;
+  padding-top:max(10px,env(safe-area-inset-top));background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:19px;white-space:nowrap}
+.brand svg{color:var(--accent)}
+.tabs{display:flex;gap:4px;flex:1;justify-content:center}
+.tab{border:0;background:transparent;padding:12px 18px;border-radius:12px;font-weight:600;color:var(--muted);min-height:48px}
+.tab.active{background:var(--accent-soft);color:var(--accent)}
+.user-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface2);
+  border-radius:999px;padding:8px 16px 8px 10px;font-weight:600;min-height:48px;white-space:nowrap}
+.dot{width:14px;height:14px;border-radius:50%;display:inline-block;flex:none}
+
+main{padding:16px;max-width:1400px;margin:0 auto}
+.view{display:none}
+.view.active{display:block}
+
+/* generic */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow)}
+.btn{border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:12px 20px;font-weight:600;min-height:52px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+.btn.big{min-height:72px;font-size:22px;border-radius:18px}
+.btn:disabled{opacity:.4;cursor:default}
+.icon-btn{border:1px solid var(--border);background:var(--surface2);border-radius:14px;width:56px;height:56px;font-size:26px;font-weight:700;line-height:1}
+.seg{display:flex;background:var(--surface2);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;border-radius:11px;padding:10px 8px;font-weight:600;color:var(--muted);min-height:46px}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.muted{color:var(--muted)}
+h2{font-size:20px;margin:0 0 12px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.spacer{flex:1}
+
+/* workout */
+.wk{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.metric{padding:18px 20px;display:flex;flex-direction:column;gap:4px;min-height:160px}
+.metric .lbl{font-size:16px;color:var(--muted);font-weight:600}
+.metric .val{font-size:clamp(44px,5.6vw,76px);font-weight:750;line-height:1.05;letter-spacing:-.02em}
+.metric .unit{font-size:18px;color:var(--muted);font-weight:600;margin-left:4px;letter-spacing:0}
+.metric.hero{grid-column:span 1}
+.metric.hero .val{color:var(--accent)}
+.metric .sub{font-size:14px;color:var(--muted);margin-top:auto}
+.zone{position:relative;height:10px;border-radius:5px;background:var(--surface2);margin-top:auto;overflow:hidden}
+.zone .band{position:absolute;top:0;bottom:0;left:42.8%;width:21.4%;background:color-mix(in srgb,var(--good) 30%,transparent)}
+.zone .needle{position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--accent);left:0;transition:left .25s}
+.panel{padding:16px;display:flex;flex-direction:column;gap:16px}
+.tap-btn{width:100%;min-height:200px;border-radius:20px;border:2px dashed var(--accent);background:var(--accent-soft);color:var(--accent);
+  font-size:26px;font-weight:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .06s}
+.tap-btn small{font-size:14px;font-weight:500;color:var(--muted)}
+.tap-btn.hit{transform:scale(.97);background:color-mix(in srgb,var(--accent) 30%,var(--surface))}
+.level{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.level .lv{font-size:34px;font-weight:750;min-width:56px;text-align:center}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ble-box{display:flex;flex-direction:column;gap:10px}
+.ble-status{font-size:15px;padding:10px 12px;border-radius:12px;background:var(--surface2);line-height:1.45}
+.ble-status.ok{color:var(--good)}
+.ble-status.err{color:var(--danger)}
+.range-row{display:flex;align-items:center;gap:10px}
+input[type=range]{flex:1;height:44px;accent-color:var(--accent)}
+.small-note{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* forms / tables */
+.field{display:flex;flex-direction:column;gap:6px;font-size:15px;color:var(--muted);font-weight:600}
+.field input,.field select{min-height:52px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:0 14px;font-size:18px;color:var(--text);font-weight:500;user-select:text;-webkit-user-select:text}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th{font-size:14px;color:var(--muted);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+tfoot td{font-weight:700;border-bottom:0}
+.del{border:0;background:transparent;color:var(--danger);font-weight:600;padding:8px 10px;min-height:44px}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+/* stats */
+.monthnav{display:flex;align-items:center;gap:8px}
+.monthnav .m{font-size:22px;font-weight:700;min-width:150px;text-align:center}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0}
+.tile{padding:16px 18px}
+.tile .lbl{font-size:14px;color:var(--muted);font-weight:600}
+.tile .v{font-size:32px;font-weight:750;margin-top:4px}
+.tile .v small{font-size:15px;color:var(--muted);font-weight:600;margin-left:3px}
+.tile .d{font-size:13px;margin-top:4px;color:var(--muted)}
+.tile .d.up{color:var(--good)} .tile .d.down{color:var(--danger)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{padding:16px 18px}
+.chart-card.wide{grid-column:1/-1}
+.chart{width:100%;height:260px}
+.chart svg{display:block;width:100%;height:100%}
+.chart-cap{min-height:22px;font-size:15px;color:var(--muted);margin-top:6px}
+.ubar{display:grid;grid-template-columns:110px 1fr 100px;align-items:center;gap:10px;margin:10px 0}
+.ubar .track{height:26px;background:var(--surface2);border-radius:8px;overflow:hidden}
+.ubar .fill{height:100%;border-radius:8px}
+.ubar .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ubar .vv{text-align:right;font-weight:600}
+
+/* users */
+.users{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ucard{padding:18px;display:flex;flex-direction:column;gap:10px;border-width:2px}
+.ucard.cur{border-color:var(--accent)}
+.ucard .nm{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}
+.ucard .meta{color:var(--muted);font-size:15px}
+.ucard .acts{display:flex;gap:8px;margin-top:auto}
+.ucard .acts .btn{flex:1;min-height:48px;padding:8px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches label{position:relative}
+.swatches input{position:absolute;opacity:0}
+.swatches span{display:block;width:44px;height:44px;border-radius:50%;border:3px solid transparent}
+.swatches input:checked+span{border-color:var(--text)}
+
+dialog{border:0;border-radius:22px;padding:0;background:var(--surface);color:var(--text);width:min(560px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog form{padding:22px;display:flex;flex-direction:column;gap:14px}
+dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sum-grid div{background:var(--surface2);border-radius:14px;padding:12px}
+.sum-grid b{display:block;font-size:26px}
+.sum-grid span{font-size:13px;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
+  padding:14px 22px;border-radius:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* portrait tablet / narrow */
+@media (max-width:1000px){
+  .wk{grid-template-columns:1fr}
+  .metrics{grid-template-columns:repeat(3,1fr)}
+  .tab{padding:12px 12px}
+  .charts{grid-template-columns:1fr}
+}
+@media (max-width:720px){
+  .top{flex-wrap:wrap}
+  .tabs{order:3;flex-basis:100%;justify-content:space-between}
+  .tab{flex:1;padding:10px 4px;font-size:15px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .grid2{grid-template-columns:1fr}
+  .table-wrap{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>
+    실내자전거
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-view="workout">운동</button>
+    <button class="tab" data-view="records">기록</button>
+    <button class="tab" data-view="stats">통계</button>
+    <button class="tab" data-view="users">사용자</button>
+    <button class="tab" data-view="settings">설정</button>
+  </nav>
+  <button class="user-chip" id="userChip"><span class="dot"></span><span class="nm"></span></button>
+</header>
+
+<main>
+  <!-- WORKOUT -->
+  <section class="view active" id="view-workout">
+    <div class="wk">
+      <div class="metrics">
+        <div class="card metric hero"><div class="lbl">속도</div><div><span class="val num" id="mSpeed">0.0</span><span class="unit">km/h</span></div><div class="sub num" id="mSpeedSub">최고 0.0</div></div>
+        <div class="card metric"><div class="lbl">회전수 (케이던스)</div><div><span class="val num" id="mRpm">0</span><span class="unit">RPM</span></div>
+          <div class="zone" title="권장 60~90 RPM"><div class="band"></div><div class="needle" id="rpmNeedle"></div></div></div>
+        <div class="card metric"><div class="lbl">칼로리</div><div><span class="val num" id="mKcal">0</span><span class="unit">kcal</span></div><div class="sub" id="mKcalSub">—</div></div>
+        <div class="card metric"><div class="lbl">운동 시간</div><div><span class="val num" id="mTime">00:00</span></div><div class="sub" id="mState">대기 중</div></div>
+        <div class="card metric"><div class="lbl">거리</div><div><span class="val num" id="mDist">0.00</span><span class="unit">km</span></div><div class="sub num" id="mAvg">평균 0.0 km/h · 0 RPM</div></div>
+        <div class="card metric"><div class="lbl">파워</div><div><span class="val num" id="mPower">0</span><span class="unit">W</span></div><div class="sub" id="mPowerSub">추정값</div></div>
+      </div>
+
+      <aside class="card panel">
+        <div class="seg" id="modeSeg">
+          <button data-mode="ble" class="on">블루투스</button>
+          <button data-mode="tap">페달 탭</button>
+          <button data-mode="manual">수동</button>
+        </div>
+
+        <div id="modeBle" class="ble-box">
+          <button class="btn primary" id="bleBtn">자전거 연결 (Yafit Cycle S2)</button>
+          <button class="btn" id="bleAllBtn">목록에 안 보이면: 모든 기기 검색</button>
+          <div class="ble-status" id="bleStatus">연결되지 않음</div>
+          <div class="small-note">Yafit 앱이 자전거와 연결되어 있으면 이 페이지에서 연결되지 않습니다. 앱을 먼저 종료하세요.</div>
+        </div>
+
+        <div id="modeTap" hidden>
+          <button class="tap-btn" id="tapBtn">여기를 탭<small>오른발 페달이 한 바퀴 돌 때마다 한 번씩</small></button>
+        </div>
+
+        <div id="modeManual" hidden>
+          <div class="field">회전수 직접 입력: <span class="num" style="color:var(--text);font-size:22px"><b id="manualOut">60</b> RPM</span></div>
+          <div class="range-row">
+            <button class="icon-btn" data-rpmstep="-5">−</button>
+            <input type="range" id="manualRpm" min="0" max="150" step="1" value="60">
+            <button class="icon-btn" data-rpmstep="5">+</button>
+          </div>
+        </div>
+
+        <div class="level">
+          <div><div class="field" style="margin:0">저항 단계</div><div class="small-note" id="levelNote">추정 계산에 사용</div></div>
+          <div class="row" style="gap:10px">
+            <button class="icon-btn" id="lvDown">−</button>
+            <span class="lv num" id="levelVal">5</span>
+            <button class="icon-btn" id="lvUp">+</button>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <button class="btn primary big" id="startBtn">시작</button>
+          <button class="btn danger big" id="stopBtn" disabled>종료</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- RECORDS -->
+  <section class="view" id="view-records">
+    <div class="row" style="margin-bottom:14px">
+      <div class="monthnav">
+        <button class="icon-btn" data-recmonth="-1">‹</button>
+        <span class="m num" id="recMonthLbl"></span>
+        <button class="icon-btn" data-recmonth="1">›</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn primary" id="addRecBtn">+ 직접 기록 추가</button>
+    </div>
+    <div class="card table-wrap" id="recTable"></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="view" id="view-stats">
+    <div class="row">
+      <select class="btn" id="statUser" style="min-width:160px"></select>
+      <div class="monthnav">
+        <button class="icon-btn" data-statmonth="-1">‹</button>
+        <span class="m num" id="statMonthLbl"></span>
+        <button class="icon-btn" data-statmonth="1">›</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="seg" id="metricSeg" style="min-width:330px">
+        <button data-metric="distance" class="on">거리</button>
+        <button data-metric="kcal">칼로리</button>
+        <button data-metric="minutes">시간</button>
+      </div>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="charts">
+      <div class="card chart-card wide"><h2 id="dailyTitle">일별 운동량</h2><div class="chart" id="chDaily"></div><div class="chart-cap" id="capDaily">막대를 터치하면 값이 표시됩니다</div></div>
+      <div class="card chart-card"><h2 id="yearTitle">월별 운동량</h2><div class="chart" id="chYear"></div><div class="chart-cap" id="capYear">막대를 터치하면 그 달로 이동합니다</div></div>
+      <div class="card chart-card"><h2 id="cmpTitle">사용자 비교</h2><div id="chUsers"></div></div>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section class="view" id="view-users">
+    <div class="row" style="margin-bottom:14px"><h2 style="margin:0">사용자</h2><div class="spacer"></div><button class="btn primary" id="addUserBtn">+ 사용자 추가</button></div>
+    <div class="users" id="userList"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="card" style="padding:20px;max-width:760px">
+      <h2>계산 설정</h2>
+      <div class="grid2">
+        <label class="field">바퀴 둘레 (m)<input type="number" id="setWheel" step="0.01" min="0.5" max="3"></label>
+        <label class="field">기어비 (페달 1회전당 바퀴 회전수)<input type="number" id="setGear" step="0.1" min="0.5" max="6"></label>
+        <label class="field">화면 테마<select id="setTheme"><option value="auto">시스템 설정 따라가기</option><option value="light">밝게</option><option value="dark">어둡게</option></select></label>
+      </div>
+      <p class="small-note" style="margin-top:14px">
+        • 자전거가 블루투스로 속도·파워를 보내면 그 값을 그대로 씁니다. 회전수만 오는 경우 속도는 회전수 × 기어비 × 바퀴 둘레로 계산합니다.<br>
+        • 칼로리: ACSM 사이클 공식 — 산소소비량(ml/kg/분) = 1.8 × 파워(W) × 6.12 ÷ 체중 + 7, 1L당 5kcal. 파워 값이 없으면 회전수 × (0.3 + 0.25 × 저항 단계)로 추정합니다.
+      </p>
+      <h2 style="margin-top:24px">데이터</h2>
+      <div class="row">
+        <button class="btn" id="exportBtn">백업 파일 내보내기</button>
+        <label class="btn" style="display:inline-flex;align-items:center">백업 불러오기<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        <button class="btn danger" id="resetBtn">모든 데이터 삭제</button>
+      </div>
+      <p class="small-note">데이터는 이 기기의 브라우저에만 저장됩니다. 브라우저 데이터를 지우기 전에 백업해 두세요.</p>
+    </div>
+  </section>
+</main>
+
+<!-- dialogs -->
+<dialog id="dlgUser"><form id="userForm">
+  <h2 id="userFormTitle">사용자 추가</h2>
+  <label class="field">이름<input name="name" required maxlength="20"></label>
+  <div class="grid2">
+    <label class="field">체중 (kg)<input name="weight" type="number" step="0.1" min="20" max="250" required></label>
+    <label class="field">키 (cm)<input name="height" type="number" step="1" min="80" max="230"></label>
+    <label class="field">나이<input name="age" type="number" min="5" max="110"></label>
+    <label class="field">성별<select name="sex"><option value="M">남</option><option value="F">여</option></select></label>
+  </div>
+  <div class="field">색상<div class="swatches" id="swatches"></div></div>
+  <div class="acts"><button type="button" class="btn" data-close>취소</button><button class="btn primary">저장</button></div>
+</form></dialog>
+
+<dialog id="dlgRec"><form id="recForm">
+  <h2>직접 기록 추가</h2>
+  <p class="small-note" style="margin:0">자전거 화면에 표시된 값을 입력하세요. 비워 둔 거리·칼로리는 자동 계산됩니다.</p>
+  <div class="grid2">
+    <label class="field">날짜·시간<input name="date" type="datetime-local" required></label>
+    <label class="field">운동 시간 (분)<input name="minutes" type="number" min="1" max="600" required></label>
+    <label class="field">평균 회전수 (RPM)<input name="rpm" type="number" min="0" max="200"></label>
+    <label class="field">저항 단계<input name="level" type="number" min="1" max="32" value="5"></label>
+    <label class="field">거리 (km)<input name="distance" type="number" step="0.01" min="0"></label>
+    <label class="field">칼로리 (kcal)<input name="kcal" type="number" step="1" min="0"></label>
+  </div>
+  <div class="acts"><button type="button" class="btn" data-close>취소</button><button class="btn primary">저장</button></div>
+</form></dialog>
+
+<dialog id="dlgSum"><form method="dialog">
+  <h2>운동 완료! 🎉</h2>
+  <div class="sum-grid" id="sumGrid"></div>
+  <div class="acts"><button class="btn primary">확인</button></div>
+</form></dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const KEY = 'bikeTracker.v1';
+const PALETTE = ['#ff6a2b','#2f7cf6','#10b981','#a855f7','#e5a50a','#ec4899','#14b8a6','#64748b'];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- storage ---------- */
+function defaults(){ return { users:[], currentUserId:null, sessions:[], settings:{ wheel:2.1, gear:2.8, theme:'auto', level:5, mode:'ble' } }; }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && Array.isArray(d.users) && Array.isArray(d.sessions)){
+      const def = defaults();
+      return { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) } };
+    }
+  }catch(e){}
+  return defaults();
+}
+let db = load();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){ toast('저장 실패 — 브라우저 저장공간을 확인하세요'); } }
+if (!db.users.length){
+  const u = { id:uid(), name:'사용자 1', color:PALETTE[0], weight:70, height:170, age:35, sex:'M' };
+  db.users.push(u); db.currentUserId = u.id; save();
+}
+const curUser = () => db.users.find(u => u.id === db.currentUserId) || db.users[0];
+
+/* ---------- helpers ---------- */
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+const pad2 = n => String(n).padStart(2,'0');
+function fmtClock(sec){ sec=Math.floor(sec); const h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), s=sec%60; return h ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`; }
+function fmtDur(sec){ const m=Math.round(sec/60); return m>=60 ? `${Math.floor(m/60)}시간 ${m%60}분` : `${m}분`; }
+const fmt1 = v => (Math.round(v*10)/10).toFixed(1);
+const ymKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+const monthLabel = (y,m) => `${y}년 ${m+1}월`;
+
+/* ---------- formulas ---------- */
+const speedFromRpm = rpm => rpm * db.settings.gear * db.settings.wheel * 60 / 1000;           // km/h
+const estPower = (rpm, level) => rpm > 0 ? rpm * (0.3 + 0.25 * level) : 0;                    // W
+function kcalPerMin(power, weight){                                                           // ACSM leg ergometry
+  if (power <= 0) return 0;
+  const vo2 = 1.8 * power * 6.12 / weight + 7;  // ml/kg/min
+  return vo2 * weight / 1000 * 5;
+}
+
+/* ---------- navigation ---------- */
+function show(view){
+  $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  if (view === 'records') renderRecords();
+  if (view === 'stats') renderStats();
+  if (view === 'users') renderUsers();
+  if (view === 'settings') renderSettings();
+}
+$$('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+$('#userChip').addEventListener('click', () => show('users'));
+function renderChip(){ const u=curUser(); $('#userChip .dot').style.background=u.color; $('#userChip .nm').textContent=u.name; }
+
+/* ---------- workout ---------- */
+const W = { state:'idle', elapsed:0, moving:0, distance:0, kcal:0, rpmInt:0, powerInt:0, maxSpeed:0,
+            last:performance.now(), startedAt:null, taps:[], manualRpm:60, live:{rpm:0,speed:0,power:0} };
+let mode = db.settings.mode || 'ble';
+let level = db.settings.level || 5;
+
+const ble = { device:null, kind:null, rpm:0, rpmTs:0, speed:null, speedTs:0, power:null, powerTs:0, level:null, kcal:null, csc:{} };
+
+function setMode(m){
+  mode = m; db.settings.mode = m; save();
+  $$('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('#modeBle').hidden = m !== 'ble'; $('#modeTap').hidden = m !== 'tap'; $('#modeManual').hidden = m !== 'manual';
+}
+$$('#modeSeg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+function setLevel(v){ level = Math.max(1, Math.min(32, v)); db.settings.level = level; save(); $('#levelVal').textContent = level; }
+$('#lvDown').addEventListener('click', () => setLevel(level-1));
+$('#lvUp').addEventListener('click', () => setLevel(level+1));
+
+// tap
+const tapBtn = $('#tapBtn');
+tapBtn.addEventListener('pointerdown', e => {
+  e.preventDefault(); W.taps.push(performance.now());
+  tapBtn.classList.add('hit'); setTimeout(() => tapBtn.classList.remove('hit'), 90);
+});
+// manual
+function setManual(v){ W.manualRpm = Math.max(0, Math.min(150, v)); $('#manualRpm').value = W.manualRpm; $('#manualOut').textContent = W.manualRpm; }
+$('#manualRpm').addEventListener('input', e => setManual(+e.target.value));
+$$('[data-rpmstep]').forEach(b => b.addEventListener('click', () => setManual(W.manualRpm + +b.dataset.rpmstep)));
+
+function readLive(now){
+  let rpm = 0, speed = null, power = null, src = '추정값';
+  if (mode === 'tap'){
+    W.taps = W.taps.filter(t => now - t < 6000);
+    const n = W.taps.length;
+    if (n >= 2 && now - W.taps[n-1] < 2500) rpm = Math.min(200, 60000 * (n-1) / (W.taps[n-1] - W.taps[0]));
+  } else if (mode === 'manual'){
+    rpm = W.manualRpm;
+  } else {
+    rpm = now - ble.rpmTs < 3000 ? ble.rpm : 0;
+    if (ble.speed != null && now - ble.speedTs < 3000) speed = ble.speed;
+    if (ble.power != null && now - ble.powerTs < 3000){ power = ble.power; src = '자전거 측정값'; }
+    if (ble.level != null) { level = ble.level; $('#levelVal').textContent = level; }
+  }
+  if (speed == null) speed = speedFromRpm(rpm);
+  if (power == null) power = estPower(rpm, level);
+  if (rpm <= 0 && mode !== 'ble') { speed = 0; power = 0; }
+  return { rpm, speed, power, src };
+}
+
+function tick(){
+  const now = performance.now();
+  const L = readLive(now);
+  W.live = L;
+  if (W.state === 'running'){
+    const dt = Math.min(15, (now - W.last) / 1000);   // 백그라운드 타이머 지연 허용
+    W.elapsed += dt;
+    if (L.rpm > 0 || L.speed > 0){ W.moving += dt; W.rpmInt += L.rpm * dt; W.powerInt += L.power * dt; }
+    W.distance += L.speed * dt / 3600;
+    W.kcal += kcalPerMin(L.power, curUser().weight) * dt / 60;
+    W.maxSpeed = Math.max(W.maxSpeed, L.speed);
+  }
+  W.last = now;
+  renderLive();
+}
+setInterval(tick, 250);
+
+function renderLive(){
+  const L = W.live;
+  $('#mSpeed').textContent = fmt1(L.speed);
+  $('#mSpeedSub').textContent = `최고 ${fmt1(W.maxSpeed)} km/h`;
+  $('#mRpm').textContent = Math.round(L.rpm);
+  $('#rpmNeedle').style.left = `calc(${Math.min(100, L.rpm / 140 * 100)}% - 2px)`;
+  $('#mKcal').textContent = W.kcal < 100 ? fmt1(W.kcal) : Math.round(W.kcal);
+  $('#mKcalSub').textContent = `${curUser().name} · ${curUser().weight}kg 기준`;
+  $('#mTime').textContent = fmtClock(W.elapsed);
+  $('#mDist').textContent = W.distance.toFixed(2);
+  const avgS = W.elapsed > 0 ? W.distance / (W.elapsed/3600) : 0;
+  const avgR = W.moving > 0 ? W.rpmInt / W.moving : 0;
+  $('#mAvg').textContent = `평균 ${fmt1(avgS)} km/h · ${Math.round(avgR)} RPM`;
+  $('#mPower').textContent = Math.round(L.power);
+  $('#mPowerSub').textContent = L.src;
+  $('#mState').textContent = { idle:'대기 중', running:'운동 중', paused:'일시정지' }[W.state];
+  $('#levelNote').textContent = (mode === 'ble' && ble.level != null) ? '자전거에서 받은 값' : '추정 계산에 사용';
+}
+
+let wakeLock = null;
+async function lockScreen(){ try{ if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){} }
+function unlockScreen(){ try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && W.state === 'running') lockScreen(); });
+
+$('#startBtn').addEventListener('click', () => {
+  if (W.state === 'idle'){ W.startedAt = new Date(); W.state = 'running'; lockScreen(); }
+  else if (W.state === 'running'){ W.state = 'paused'; }
+  else { W.state = 'running'; }
+  W.last = performance.now();
+  updateCtrl();
+});
+$('#stopBtn').addEventListener('click', () => {
+  if (W.state === 'idle') return;
+  if (W.elapsed < 10){ resetWorkout(); toast('10초 미만 운동은 저장하지 않았어요'); return; }
+  if (!confirm('운동을 종료하고 기록을 저장할까요?')) return;
+  const s = {
+    id:uid(), userId:curUser().id, date:W.startedAt.toISOString(),
+    duration:Math.round(W.elapsed), distance:+W.distance.toFixed(3),
+    avgRpm:Math.round(W.moving ? W.rpmInt / W.moving : 0),
+    avgSpeed:+(W.distance / (W.elapsed/3600)).toFixed(2), maxSpeed:+W.maxSpeed.toFixed(1),
+    avgPower:Math.round(W.moving ? W.powerInt / W.moving : 0), kcal:Math.round(W.kcal),
+    level, source:mode
+  };
+  db.sessions.push(s); save();
+  $('#sumGrid').innerHTML = [
+    [fmtClock(s.duration),'운동 시간'],[s.distance.toFixed(2)+' km','거리'],[s.kcal+' kcal','칼로리'],
+    [fmt1(s.avgSpeed)+' km/h','평균 속도'],[s.avgRpm+' RPM','평균 회전수'],[s.avgPower+' W','평균 파워']
+  ].map(([v,l]) => `<div><b class="num">${v}</b><span>${l}</span></div>`).join('');
+  $('#dlgSum').showModal();
+  resetWorkout();
+});
+function resetWorkout(){
+  Object.assign(W, { state:'idle', elapsed:0, moving:0, distance:0, kcal:0, rpmInt:0, powerInt:0, maxSpeed:0, startedAt:null });
+  unlockScreen(); updateCtrl();
+}
+function updateCtrl(){
+  $('#startBtn').textContent = { idle:'시작', running:'일시정지', paused:'계속' }[W.state];
+  $('#stopBtn').disabled = W.state === 'idle';
+  $('#userChip').disabled = W.state !== 'idle';
+}
+window.addEventListener('beforeunload', e => { if (W.state !== 'idle'){ e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- Bluetooth (FTMS 0x1826 / CSC 0x1816) ---------- */
+function bleMsg(text, cls){ const el=$('#bleStatus'); el.textContent=text; el.className='ble-status'+(cls?' '+cls:''); }
+if (!navigator.bluetooth){
+  bleMsg(window.isSecureContext
+    ? '이 브라우저는 웹 블루투스를 지원하지 않습니다. 안드로이드 태블릿의 Chrome 또는 Samsung Internet을 사용하세요. (iPad Safari 미지원 → "Bluefy" 브라우저 앱 사용)'
+    : '블루투스는 https:// 또는 localhost 주소에서만 동작합니다. 안내된 방법으로 페이지를 열어 주세요.', 'err');
+  $('#bleBtn').disabled = true; $('#bleAllBtn').disabled = true;
+}
+$('#bleBtn').addEventListener('click', () => connectBle(false));
+$('#bleAllBtn').addEventListener('click', () => connectBle(true));
+
+async function connectBle(all){
+  try{
+    if (ble.device && ble.device.gatt.connected) ble.device.gatt.disconnect();
+    const opts = all
+      ? { acceptAllDevices:true, optionalServices:[0x1826, 0x1816, 0x180a] }
+      : { filters:[{services:[0x1826]},{services:[0x1816]},{namePrefix:'YAFIT'},{namePrefix:'Yafit'},{namePrefix:'S2'}], optionalServices:[0x1826, 0x1816, 0x180a] };
+    const device = await navigator.bluetooth.requestDevice(opts);
+    ble.device = device;
+    device.addEventListener('gattserverdisconnected', onBleDisconnect);
+    bleMsg(`${device.name || '기기'}에 연결하는 중…`);
+    const server = await device.gatt.connect();
+    let ok = false;
+    try{
+      const svc = await server.getPrimaryService(0x1826);
+      const ch = await svc.getCharacteristic(0x2AD2);           // Indoor Bike Data
+      ch.addEventListener('characteristicvaluechanged', e => parseFtms(e.target.value));
+      await ch.startNotifications();
+      ble.kind = 'FTMS'; ok = true;
+    }catch(e){}
+    if (!ok){
+      try{
+        const svc = await server.getPrimaryService(0x1816);
+        const ch = await svc.getCharacteristic(0x2A5B);         // CSC Measurement
+        ch.addEventListener('characteristicvaluechanged', e => parseCsc(e.target.value));
+        await ch.startNotifications();
+        ble.kind = 'CSC'; ble.csc = {}; ok = true;
+      }catch(e){}
+    }
+    if (!ok){ device.gatt.disconnect(); bleMsg('이 기기에서 지원하는 운동 데이터(FTMS/CSC)를 찾지 못했습니다. 탭 또는 수동 모드를 사용하세요.', 'err'); return; }
+    bleMsg(`✓ ${device.name || '자전거'} 연결됨 (${ble.kind}) — 페달을 돌리면 값이 표시됩니다`, 'ok');
+    $('#bleBtn').textContent = '다시 연결';
+  }catch(e){
+    if (e && e.name === 'NotFoundError') bleMsg('기기 선택이 취소되었습니다.');
+    else bleMsg('연결 실패: ' + (e && e.message || e) + ' — 자전거 전원과 Yafit 앱 연결 해제를 확인하세요.', 'err');
+  }
+}
+function onBleDisconnect(){
+  ble.rpm = 0; ble.speed = null; ble.power = null; ble.level = null;
+  bleMsg('연결이 끊어졌습니다. "다시 연결"을 눌러 주세요.', 'err');
+  if (W.state === 'running') toast('블루투스 연결이 끊어졌어요');
+}
+function parseFtms(dv){
+  const now = performance.now();
+  let o = 0;
+  const f = dv.getUint16(o, true); o += 2;
+  if (!(f & 0x0001)){ ble.speed = dv.getUint16(o, true) / 100; ble.speedTs = now; o += 2; } // instantaneous speed
+  if (f & 0x0002) o += 2;                                                                    // average speed
+  if (f & 0x0004){ ble.rpm = dv.getUint16(o, true) / 2; ble.rpmTs = now; o += 2; }           // instantaneous cadence
+  if (f & 0x0008) o += 2;                                                                    // average cadence
+  if (f & 0x0010) o += 3;                                                                    // total distance
+  if (f & 0x0020){ const r = dv.getInt16(o, true); o += 2; if (r > 0) ble.level = r > 32 ? Math.round(r/10) : r; } // resistance
+  if (f & 0x0040){ ble.power = Math.max(0, dv.getInt16(o, true)); ble.powerTs = now; o += 2; } // power
+}
+function parseCsc(dv){
+  const now = performance.now(), c = ble.csc;
+  const f = dv.getUint8(0); let o = 1;
+  if (f & 0x01){
+    const rev = dv.getUint32(o, true), t = dv.getUint16(o+4, true); o += 6;
+    if (c.wRev != null){
+      const dr = rev - c.wRev, dtt = ((t - c.wT + 65536) % 65536) / 1024;
+      if (dr > 0 && dtt > 0){ ble.speed = dr * db.settings.wheel / dtt * 3.6; ble.speedTs = now; }
+    }
+    c.wRev = rev; c.wT = t;
+  }
+  if (f & 0x02){
+    const rev = dv.getUint16(o, true), t = dv.getUint16(o+2, true);
+    if (c.cRev != null){
+      const dr = (rev - c.cRev + 65536) % 65536, dtt = ((t - c.cT + 65536) % 65536) / 1024;
+      if (dr > 0 && dtt > 0){ ble.rpm = dr / dtt * 60; ble.rpmTs = now; }
+    }
+    c.cRev = rev; c.cT = t;
+  }
+}
+
+/* ---------- records ---------- */
+let recYM = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
+$$('[data-recmonth]').forEach(b => b.addEventListener('click', () => { recYM = shiftYM(recYM, +b.dataset.recmonth); renderRecords(); }));
+function shiftYM({y,m}, d){ const t = new Date(y, m+d, 1); return { y:t.getFullYear(), m:t.getMonth() }; }
+function sessionsFor(userId, y, m){
+  return db.sessions.filter(s => { const d = new Date(s.date); return s.userId === userId && d.getFullYear() === y && (m == null || d.getMonth() === m); });
+}
+function renderRecords(){
+  $('#recMonthLbl').textContent = monthLabel(recYM.y, recYM.m);
+  const list = sessionsFor(curUser().id, recYM.y, recYM.m).sort((a,b) => b.date.localeCompare(a.date));
+  if (!list.length){ $('#recTable').innerHTML = `<div class="empty">${esc(curUser().name)}님의 ${recYM.m+1}월 기록이 없습니다.</div>`; return; }
+  const tot = list.reduce((a,s) => ({ d:a.d+s.duration, k:a.k+s.distance, c:a.c+s.kcal }), {d:0,k:0,c:0});
+  const day = ['일','월','화','수','목','금','토'];
+  $('#recTable').innerHTML = `<table class="num"><thead><tr><th>날짜</th><th>시간</th><th>거리</th><th>평균 속도</th><th>평균 RPM</th><th>파워</th><th>칼로리</th><th></th></tr></thead><tbody>
+    ${list.map(s => { const d = new Date(s.date); return `<tr>
+      <td>${d.getMonth()+1}/${d.getDate()} (${day[d.getDay()]}) <span class="muted">${pad2(d.getHours())}:${pad2(d.getMinutes())}</span></td>
+      <td>${fmtClock(s.duration)}</td><td>${s.distance.toFixed(2)} km</td><td>${fmt1(s.avgSpeed)} km/h</td>
+      <td>${s.avgRpm}</td><td>${s.avgPower||'-'} W</td><td>${s.kcal} kcal</td>
+      <td><button class="del" data-del="${s.id}">삭제</button></td></tr>`; }).join('')}
+    </tbody><tfoot><tr><td>합계 ${list.length}회</td><td>${fmtDur(tot.d)}</td><td>${tot.k.toFixed(2)} km</td><td></td><td></td><td></td><td>${Math.round(tot.c)} kcal</td><td></td></tr></tfoot></table>`;
+  $$('[data-del]').forEach(b => b.addEventListener('click', () => {
+    if (!confirm('이 기록을 삭제할까요?')) return;
+    db.sessions = db.sessions.filter(s => s.id !== b.dataset.del); save(); renderRecords();
+  }));
+}
+$('#addRecBtn').addEventListener('click', () => {
+  const f = $('#recForm'); f.reset();
+  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  f.date.value = d.toISOString().slice(0,16); f.level.value = level;
+  $('#dlgRec').showModal();
+});
+$('#recForm').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target;
+  const minutes = +f.minutes.value, rpm = +f.rpm.value || 0, lv = +f.level.value || 5;
+  const sec = minutes * 60;
+  const distance = f.distance.value !== '' ? +f.distance.value : speedFromRpm(rpm) * minutes / 60;
+  const power = estPower(rpm, lv);
+  const kcal = f.kcal.value !== '' ? +f.kcal.value : kcalPerMin(power, curUser().weight) * minutes;
+  db.sessions.push({ id:uid(), userId:curUser().id, date:new Date(f.date.value).toISOString(), duration:sec,
+    distance:+distance.toFixed(3), avgRpm:Math.round(rpm), avgSpeed:+(distance/(minutes/60)).toFixed(2),
+    maxSpeed:0, avgPower:Math.round(power), kcal:Math.round(kcal), level:lv, source:'entry' });
+  save(); $('#dlgRec').close();
+  const d = new Date(f.date.value); recYM = { y:d.getFullYear(), m:d.getMonth() }; renderRecords(); toast('기록을 추가했어요');
+});
+
+/* ---------- stats ---------- */
+let statYM = { ...recYM }, statMetric = 'distance', statUserId = null;
+const METRIC = {
+  distance:{ name:'거리', unit:'km', get:s => s.distance, f:v => v.toFixed(v < 10 ? 1 : 0) },
+  kcal:    { name:'칼로리', unit:'kcal', get:s => s.kcal, f:v => Math.round(v).toLocaleString() },
+  minutes: { name:'운동 시간', unit:'분', get:s => s.duration/60, f:v => Math.round(v).toLocaleString() }
+};
+$$('[data-statmonth]').forEach(b => b.addEventListener('click', () => { statYM = shiftYM(statYM, +b.dataset.statmonth); renderStats(); }));
+$$('#metricSeg button').forEach(b => b.addEventListener('click', () => {
+  statMetric = b.dataset.metric; $$('#metricSeg button').forEach(x => x.classList.toggle('on', x === b)); renderStats();
+}));
+$('#statUser').addEventListener('change', e => { statUserId = e.target.value; renderStats(); });
+
+function niceMax(v){ if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); const n = v/p; return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10) * p; }
+function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function barChart(el, { labels, values, color, highlight = -1, fmt, onPick }){
+  const Wd = Math.max(280, el.clientWidth), H = el.clientHeight || 260;
+  const pl = 46, pr = 8, pt = 22, pb = 28, cw = Wd - pl - pr, ch = H - pt - pb;
+  const max = niceMax(Math.max(...values)), n = values.length, step = cw / n, bw = Math.max(4, step * 0.64);
+  const every = step >= 26 ? 1 : step >= 13 ? 2 : 5;
+  const grid = css('--border'), muted = css('--muted');
+  let s = `<svg viewBox="0 0 ${Wd} ${H}" font-size="12" font-family="inherit">`;
+  for (let i = 0; i <= 4; i++){
+    const y = pt + ch - ch * i / 4, v = max * i / 4;
+    s += `<line x1="${pl}" x2="${Wd-pr}" y1="${y}" y2="${y}" stroke="${grid}" stroke-width="1"/>`;
+    s += `<text x="${pl-8}" y="${y+4}" text-anchor="end" fill="${muted}">${+v.toFixed(v < 10 && max < 10 ? 1 : 0)}</text>`;
+  }
+  values.forEach((v, i) => {
+    const h = ch * v / max, x = pl + step * i + (step - bw) / 2, y = pt + ch - h;
+    const op = highlight < 0 || i === highlight ? 1 : 0.45;
+    if (v > 0) s += `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(h,2)}" rx="${Math.min(4,bw/3)}" fill="${color}" opacity="${op}"/>`;
+    if (v > 0 && n <= 12) s += `<text x="${x+bw/2}" y="${y-6}" text-anchor="middle" fill="${css('--text')}" font-weight="600">${fmt(v)}</text>`;
+    if (i % every === 0 || i === highlight) s += `<text x="${x+bw/2}" y="${H-8}" text-anchor="middle" fill="${i===highlight?css('--text'):muted}" font-weight="${i===highlight?700:400}">${labels[i]}</text>`;
+    s += `<rect data-i="${i}" x="${pl+step*i}" y="${pt}" width="${step}" height="${ch+pb}" fill="transparent"/>`;
+  });
+  s += '</svg>';
+  el.innerHTML = s;
+  el.querySelectorAll('rect[data-i]').forEach(r => r.addEventListener('click', () => onPick && onPick(+r.dataset.i)));
+}
+
+function renderStats(){
+  const sel = $('#statUser');
+  if (!statUserId || !db.users.some(u => u.id === statUserId)) statUserId = curUser().id;
+  sel.innerHTML = db.users.map(u => `<option value="${u.id}" ${u.id===statUserId?'selected':''}>${esc(u.name)}</option>`).join('');
+  const user = db.users.find(u => u.id === statUserId);
+  const M = METRIC[statMetric], color = user.color;
+  const { y, m } = statYM;
+  $('#statMonthLbl').textContent = monthLabel(y, m);
+
+  // tiles with previous-month comparison
+  const cur = sessionsFor(user.id, y, m), p = shiftYM(statYM, -1), prev = sessionsFor(user.id, p.y, p.m);
+  const sum = (arr, f) => arr.reduce((a, s) => a + f(s), 0);
+  const tiles = [
+    ['운동 횟수', cur.length, prev.length, v => v, '회'],
+    ['총 운동 시간', sum(cur, s=>s.duration)/60, sum(prev, s=>s.duration)/60, v => Math.round(v).toLocaleString(), '분'],
+    ['총 거리', sum(cur, s=>s.distance), sum(prev, s=>s.distance), v => v.toFixed(1), 'km'],
+    ['총 칼로리', sum(cur, s=>s.kcal), sum(prev, s=>s.kcal), v => Math.round(v).toLocaleString(), 'kcal']
+  ];
+  $('#tiles').innerHTML = tiles.map(([l, v, pv, f, u]) => {
+    let d = '지난달 기록 없음', cls = '';
+    if (pv > 0){ const pct = Math.round((v - pv) / pv * 100); d = `지난달 대비 ${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%`; cls = pct >= 0 ? 'up' : 'down'; }
+    return `<div class="card tile"><div class="lbl">${l}</div><div class="v num">${f(v)}<small>${u}</small></div><div class="d ${cls}">${d}</div></div>`;
+  }).join('');
+
+  // daily
+  const days = new Date(y, m+1, 0).getDate();
+  const daily = Array(days).fill(0);
+  cur.forEach(s => { daily[new Date(s.date).getDate()-1] += M.get(s); });
+  const today = new Date(); const hi = today.getFullYear()===y && today.getMonth()===m ? today.getDate()-1 : -1;
+  $('#dailyTitle').textContent = `${m+1}월 일별 ${M.name} (${M.unit})`;
+  barChart($('#chDaily'), { labels: daily.map((_, i) => i+1), values: daily, color, highlight: hi, fmt: M.f,
+    onPick: i => { $('#capDaily').textContent = `${m+1}월 ${i+1}일: ${M.f(daily[i])} ${M.unit}`; } });
+  $('#capDaily').textContent = '막대를 터치하면 값이 표시됩니다';
+
+  // yearly
+  const yearVals = Array(12).fill(0);
+  sessionsFor(user.id, y, null).forEach(s => { yearVals[new Date(s.date).getMonth()] += M.get(s); });
+  $('#yearTitle').textContent = `${y}년 월별 ${M.name} (${M.unit})`;
+  barChart($('#chYear'), { labels: yearVals.map((_, i) => (i+1)+'월'), values: yearVals, color, highlight: m, fmt: M.f,
+    onPick: i => { statYM = { y, m:i }; renderStats(); } });
+
+  // user comparison
+  $('#cmpTitle').textContent = `${m+1}월 사용자 비교 (${M.name})`;
+  const rows = db.users.map(u => ({ u, v: sum(sessionsFor(u.id, y, m), M.get) })).sort((a,b) => b.v - a.v);
+  const top = Math.max(...rows.map(r => r.v), 0);
+  $('#chUsers').innerHTML = top === 0 ? `<div class="empty">이번 달 기록이 없습니다.</div>` : rows.map(r =>
+    `<div class="ubar"><span class="nm">${esc(r.u.name)}</span><div class="track"><div class="fill" style="width:${r.v/top*100}%;background:${r.u.color}"></div></div><span class="vv num">${M.f(r.v)} ${M.unit}</span></div>`).join('');
+}
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if ($('#view-stats').classList.contains('active')) renderStats(); }, 150); });
+
+/* ---------- users ---------- */
+let editingId = null;
+function renderUsers(){
+  $('#userList').innerHTML = db.users.map(u => {
+    const n = db.sessions.filter(s => s.userId === u.id).length;
+    return `<div class="card ucard ${u.id===curUser().id?'cur':''}">
+      <div class="nm"><span class="dot" style="background:${u.color};width:18px;height:18px"></span>${esc(u.name)}${u.id===curUser().id?' <span class="muted" style="font-size:14px">(선택됨)</span>':''}</div>
+      <div class="meta">${u.weight}kg${u.height?' · '+u.height+'cm':''}${u.age?' · '+u.age+'세':''} · ${u.sex==='F'?'여':'남'}<br>운동 기록 ${n}회</div>
+      <div class="acts">
+        <button class="btn ${u.id===curUser().id?'':'primary'}" data-pick="${u.id}" ${u.id===curUser().id?'disabled':''}>선택</button>
+        <button class="btn" data-edit="${u.id}">수정</button>
+        <button class="btn danger" data-deluser="${u.id}">삭제</button>
+      </div></div>`;
+  }).join('');
+  $$('[data-pick]').forEach(b => b.addEventListener('click', () => {
+    if (W.state !== 'idle'){ toast('운동 중에는 사용자를 바꿀 수 없어요'); return; }
+    db.currentUserId = b.dataset.pick; save(); renderChip(); renderUsers(); toast(`${curUser().name}님으로 변경했어요`);
+  }));
+  $$('[data-edit]').forEach(b => b.addEventListener('click', () => openUser(b.dataset.edit)));
+  $$('[data-deluser]').forEach(b => b.addEventListener('click', () => {
+    if (db.users.length === 1){ toast('최소 한 명의 사용자가 필요해요'); return; }
+    const u = db.users.find(x => x.id === b.dataset.deluser);
+    if (W.state !== 'idle' && u.id === curUser().id){ toast('운동 중인 사용자는 삭제할 수 없어요'); return; }
+    if (!confirm(`${u.name}님과 운동 기록을 모두 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    db.users = db.users.filter(x => x.id !== u.id); db.sessions = db.sessions.filter(s => s.userId !== u.id);
+    if (db.currentUserId === u.id) db.currentUserId = db.users[0].id;
+    save(); renderChip(); renderUsers();
+  }));
+}
+function openUser(id){
+  editingId = id || null;
+  const f = $('#userForm'); f.reset();
+  const u = id ? db.users.find(x => x.id === id) : null;
+  $('#userFormTitle').textContent = u ? '사용자 수정' : '사용자 추가';
+  const usedColors = db.users.map(x => x.color);
+  const color = u ? u.color : (PALETTE.find(c => !usedColors.includes(c)) || PALETTE[0]);
+  $('#swatches').innerHTML = PALETTE.map(c => `<label><input type="radio" name="color" value="${c}" ${c===color?'checked':''}><span style="background:${c}"></span></label>`).join('');
+  f.name.value = u ? u.name : ''; f.weight.value = u ? u.weight : 65; f.height.value = u ? (u.height||'') : '';
+  f.age.value = u ? (u.age||'') : ''; f.sex.value = u ? u.sex : 'M';
+  $('#dlgUser').showModal();
+}
+$('#addUserBtn').addEventListener('click', () => openUser(null));
+$('#userForm').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target;
+  const data = { name:f.name.value.trim() || '이름 없음', weight:+f.weight.value, height:+f.height.value || null,
+                 age:+f.age.value || null, sex:f.sex.value, color:f.color.value || PALETTE[0] };
+  if (editingId) Object.assign(db.users.find(x => x.id === editingId), data);
+  else { const u = { id:uid(), ...data }; db.users.push(u); }
+  save(); $('#dlgUser').close(); renderChip(); renderUsers();
+});
+$$('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+
+/* ---------- settings ---------- */
+function applyTheme(){ const t = db.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
+function renderSettings(){ $('#setWheel').value = db.settings.wheel; $('#setGear').value = db.settings.gear; $('#setTheme').value = db.settings.theme; }
+$('#setWheel').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.wheel = v; save(); toast('저장했어요'); } });
+$('#setGear').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.gear = v; save(); toast('저장했어요'); } });
+$('#setTheme').addEventListener('change', e => { db.settings.theme = e.target.value; save(); applyTheme(); });
+$('#exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `실내자전거-백업-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('#importFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try{
+    const d = JSON.parse(await file.text());
+    if (!Array.isArray(d.users) || !Array.isArray(d.sessions) || !d.users.length) throw new Error('형식 오류');
+    if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 불러옵니다. 현재 데이터는 대체됩니다. 계속할까요?`)) return;
+    const def = defaults(); db = { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) } };
+    save(); applyTheme(); renderChip(); renderSettings(); toast('불러오기 완료');
+  }catch(err){ toast('백업 파일을 읽을 수 없어요'); }
+  e.target.value = '';
+});
+$('#resetBtn').addEventListener('click', () => {
+  if (!confirm('모든 사용자와 운동 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+  localStorage.removeItem(KEY); location.reload();
+});
+
+/* ---------- init ---------- */
+applyTheme(); renderChip(); setMode(mode); setLevel(level); setManual(60); updateCtrl(); renderLive();
+})();
+</script>
+</body>
+</html>
