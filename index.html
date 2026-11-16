@@ -11,6 +11,8 @@
   --bg:#f3f4f7; --surface:#ffffff; --surface2:#eceef2; --text:#141820; --muted:#5d6572;
   --border:#dbdfe5; --accent:#ff6a2b; --accent-ink:#ffffff; --accent-soft:#ffe6da;
   --blue:#2f7cf6; --good:#1b9a5c; --danger:#d63a3a; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.05);
+  --sky1:#bfe1ff; --sky2:#fff2e3; --sun:#ffb648; --cloud:#ffffff; --stars:0; --hill1:#bfe0c6; --hill2:#93cba2; --tree:#4c9a66;
+  --trunk:#8b5e3c; --road:#596170; --dash:#f5f5f5; --frame:#2a2f37; --skin:#f2c39b; --shorts:#262a32; --user:#ff6a2b;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
@@ -18,12 +20,16 @@
     --bg:#0e1014; --surface:#171a20; --surface2:#20242c; --text:#eef1f5; --muted:#99a2ae;
     --border:#2a2f38; --accent:#ff7a3d; --accent-ink:#1a0d05; --accent-soft:#3a2217;
     --blue:#5b9bff; --good:#3cc47f; --danger:#ff5d5d; --shadow:none; color-scheme:dark;
+  --sky1:#0a1530; --sky2:#283a60; --sun:#f3efcf; --cloud:#33456b; --stars:1; --hill1:#1b3540; --hill2:#20453c; --tree:#2a5a43;
+  --trunk:#4b3628; --road:#262a32; --dash:#8f96a3; --frame:#d5dbe4; --skin:#e6b48d; --shorts:#3b4252;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0e1014; --surface:#171a20; --surface2:#20242c; --text:#eef1f5; --muted:#99a2ae;
   --border:#2a2f38; --accent:#ff7a3d; --accent-ink:#1a0d05; --accent-soft:#3a2217;
   --blue:#5b9bff; --good:#3cc47f; --danger:#ff5d5d; --shadow:none; color-scheme:dark;
+  --sky1:#0a1530; --sky2:#283a60; --sun:#f3efcf; --cloud:#33456b; --stars:1; --hill1:#1b3540; --hill2:#20453c; --tree:#2a5a43;
+  --trunk:#4b3628; --road:#262a32; --dash:#8f96a3; --frame:#d5dbe4; --skin:#e6b48d; --shorts:#3b4252;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -156,6 +162,108 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
   padding:14px 22px;border-radius:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:calc(100vw - 32px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ---------- visuals & motion ---------- */
+.ic{display:inline-flex;width:20px;height:20px;flex:none}
+.ic svg{width:100%;height:100%;display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.big{white-space:nowrap;padding-left:10px;padding-right:10px}
+.btn.big .ic{width:24px;height:24px}
+.tab{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.seg button{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;padding-left:4px;padding-right:4px}
+.seg .ic{width:16px;height:16px}
+.view.active{animation:viewIn .32s cubic-bezier(.2,.7,.3,1)}
+@keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.btn,.icon-btn,.tab,.user-chip,.goal{transition:transform .12s ease,background-color .2s,box-shadow .2s,filter .2s}
+.btn:not(:disabled):active,.icon-btn:active,.tab:active,.user-chip:not(:disabled):active,.goal:active{transform:scale(.96)}
+@media (hover:hover){
+  .btn:not(:disabled):hover{filter:brightness(1.05);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+  .tab:not(.active):hover{background:var(--surface2)}
+  .lift{transition:transform .2s ease,box-shadow .2s ease}
+  .lift:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.10)}
+}
+.user-chip .dot{width:28px;height:28px;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800}
+.metric .lbl,.tile .lbl{display:flex;align-items:center;gap:10px}
+.chip-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--c,var(--accent)) 16%,transparent);color:var(--c,var(--accent))}
+.tile .chip-ic{width:30px;height:30px;border-radius:9px}
+.tile .chip-ic .ic{width:17px;height:17px}
+body.running .metric[data-k="kcal"] .chip-ic .ic{animation:flicker .9s ease-in-out infinite}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.18) rotate(-6deg)}}
+.state{display:inline-flex;align-items:center;gap:6px}
+.state i{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+body.running .state i{background:var(--danger);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 55%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+
+/* ride scene */
+.wk-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.ride{position:relative;height:230px;overflow:hidden}
+.ride .scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glass{background:color-mix(in srgb,var(--surface) 80%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.ride-badge{position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:700;font-size:15px}
+.ride-badge .dot{width:12px;height:12px;background:var(--muted);transition:background .3s}
+.goal{position:absolute;right:12px;top:12px;display:flex;align-items:center;gap:10px;padding:8px 16px 8px 8px;border-radius:18px;border:0;text-align:left;color:var(--text)}
+.ring-wrap{position:relative;width:56px;height:56px;flex:none}
+.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
+.ring-wrap em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:800}
+.goal .ring-bg{stroke:var(--surface2)}
+.goal .ring{stroke:var(--good);transition:stroke-dashoffset .6s ease,stroke .3s}
+.goal.done .ring{stroke:var(--accent)}
+.goal .gtxt span{display:block;font-size:13px;color:var(--muted);font-weight:600}
+.goal .gtxt b{display:block;font-size:19px}
+.milestone{position:absolute;left:50%;top:32%;padding:10px 22px;border-radius:14px;background:var(--accent);color:var(--accent-ink);
+  font-weight:800;font-size:22px;pointer-events:none;white-space:nowrap;opacity:0;transform:translate(-50%,-50%);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.milestone.show{animation:pop 2.2s ease forwards}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-70%)}100%{opacity:0;transform:translate(-50%,-90%) scale(.95)}}
+
+/* tap */
+.tap-btn{position:relative;overflow:hidden}
+.tap-btn .crank{width:60px;height:60px;margin-bottom:4px;transition:transform .35s cubic-bezier(.3,1.3,.5,1)}
+.ripple{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:var(--accent);opacity:.35;transform:scale(0);animation:ripple .6s ease-out forwards;pointer-events:none}
+@keyframes ripple{to{transform:scale(16);opacity:0}}
+
+/* records */
+tbody tr{animation:rowIn .35s ease both}
+@keyframes rowIn{from{opacity:0;transform:translateY(6px)}}
+@media (hover:hover){tbody tr:hover td{background:var(--surface2)}}
+.src{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--surface2);color:var(--muted);vertical-align:middle;margin-right:8px}
+.src .ic{width:16px;height:16px}
+.empty .ill{width:190px;height:auto;display:block;margin:0 auto 12px;color:var(--muted)}
+.empty .zz text{animation:zz 2.4s ease-in-out infinite}
+.empty .zz text:nth-child(2){animation-delay:.3s}
+.empty .zz text:nth-child(3){animation-delay:.6s}
+@keyframes zz{0%,100%{opacity:.25}50%{opacity:1}}
+.empty .btn{margin-top:16px}
+
+/* charts */
+.chart rect.bar{transform-box:fill-box;transform-origin:50% 100%;animation:grow .6s cubic-bezier(.2,.8,.3,1) both}
+@keyframes grow{from{transform:scaleY(0)}}
+.chart rect[data-i]{cursor:pointer}
+@media (hover:hover){.chart rect[data-i]:hover{fill:color-mix(in srgb,var(--text) 7%,transparent)}}
+.ubar .fill{animation:fillIn .8s cubic-bezier(.2,.8,.3,1) both}
+@keyframes fillIn{from{width:0}}
+
+/* users */
+.ucard .head{display:flex;align-items:center;gap:14px}
+.avatar{position:relative;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:24px;flex:none;box-shadow:inset 0 -4px 0 rgba(0,0,0,.15)}
+.ucard.cur .avatar{box-shadow:inset 0 -4px 0 rgba(0,0,0,.15),0 0 0 3px var(--surface),0 0 0 5px var(--accent)}
+.avatar .chk{position:absolute;right:-5px;bottom:-5px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;border:2px solid var(--surface)}
+.avatar .chk .ic{width:14px;height:14px}
+.ucard .stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--surface2);border-radius:12px;padding:10px}
+.ucard .stats3 div{font-size:12px;color:var(--muted);text-align:center}
+.ucard .stats3 b{display:block;font-size:18px;color:var(--text)}
+
+/* summary */
+.trophy{display:block;width:92px;height:92px;margin:0 auto;animation:bounceIn .7s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes bounceIn{from{transform:scale(.3) rotate(-20deg);opacity:0}}
+#dlgSum h2{text-align:center;margin:0}
+.sum-grid div{animation:rowIn .4s ease both}
+.sum-grid div:nth-child(2){animation-delay:.06s}
+.sum-grid div:nth-child(3){animation-delay:.12s}
+.sum-grid div:nth-child(4){animation-delay:.18s}
+.sum-grid div:nth-child(5){animation-delay:.24s}
+.sum-grid div:nth-child(6){animation-delay:.3s}
+.confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:100}
+
 /* portrait tablet / narrow */
 @media (max-width:1000px){
   .wk{grid-template-columns:1fr}
@@ -171,6 +279,18 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
   .tiles{grid-template-columns:repeat(2,1fr)}
   .grid2{grid-template-columns:1fr}
   .table-wrap{overflow-x:auto}
+  .tab{flex-direction:column;gap:2px;font-size:13px;min-height:54px}
+  .ride{height:190px}
+  .goal{padding:5px;border-radius:50%}
+  .goal .gtxt{display:none}
+  .ring-wrap{width:48px;height:48px}
+  .ride-badge{font-size:13px;padding:6px 12px}
+  .milestone{font-size:18px}
+  .sum-grid{grid-template-columns:repeat(2,1fr)}
+  .sum-grid b{font-size:21px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 </style>
 </head>
@@ -181,11 +301,11 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
     실내자전거
   </div>
   <nav class="tabs">
-    <button class="tab active" data-view="workout">운동</button>
-    <button class="tab" data-view="records">기록</button>
-    <button class="tab" data-view="stats">통계</button>
-    <button class="tab" data-view="users">사용자</button>
-    <button class="tab" data-view="settings">설정</button>
+    <button class="tab active" data-view="workout"><i class="ic" data-icon="bike"></i><span>운동</span></button>
+    <button class="tab" data-view="records"><i class="ic" data-icon="list"></i><span>기록</span></button>
+    <button class="tab" data-view="stats"><i class="ic" data-icon="bars"></i><span>통계</span></button>
+    <button class="tab" data-view="users"><i class="ic" data-icon="users"></i><span>사용자</span></button>
+    <button class="tab" data-view="settings"><i class="ic" data-icon="gear"></i><span>설정</span></button>
   </nav>
   <button class="user-chip" id="userChip"><span class="dot"></span><span class="nm"></span></button>
 </header>
@@ -194,21 +314,71 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
   <!-- WORKOUT -->
   <section class="view active" id="view-workout">
     <div class="wk">
-      <div class="metrics">
-        <div class="card metric hero"><div class="lbl">속도</div><div><span class="val num" id="mSpeed">0.0</span><span class="unit">km/h</span></div><div class="sub num" id="mSpeedSub">최고 0.0</div></div>
-        <div class="card metric"><div class="lbl">회전수 (케이던스)</div><div><span class="val num" id="mRpm">0</span><span class="unit">RPM</span></div>
-          <div class="zone" title="권장 60~90 RPM"><div class="band"></div><div class="needle" id="rpmNeedle"></div></div></div>
-        <div class="card metric"><div class="lbl">칼로리</div><div><span class="val num" id="mKcal">0</span><span class="unit">kcal</span></div><div class="sub" id="mKcalSub">—</div></div>
-        <div class="card metric"><div class="lbl">운동 시간</div><div><span class="val num" id="mTime">00:00</span></div><div class="sub" id="mState">대기 중</div></div>
-        <div class="card metric"><div class="lbl">거리</div><div><span class="val num" id="mDist">0.00</span><span class="unit">km</span></div><div class="sub num" id="mAvg">평균 0.0 km/h · 0 RPM</div></div>
-        <div class="card metric"><div class="lbl">파워</div><div><span class="val num" id="mPower">0</span><span class="unit">W</span></div><div class="sub" id="mPowerSub">추정값</div></div>
+     <div class="wk-main">
+      <div class="card ride" id="ride">
+        <svg class="scene" viewBox="0 0 800 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <defs>
+            <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky1)"/><stop offset="1" style="stop-color:var(--sky2)"/></linearGradient>
+            <g id="tCloud" style="fill:var(--cloud)"><ellipse cx="110" cy="66" rx="34" ry="11"/><ellipse cx="128" cy="58" rx="19" ry="13"/><ellipse cx="470" cy="46" rx="28" ry="9"/><ellipse cx="486" cy="40" rx="15" ry="10"/><ellipse cx="700" cy="84" rx="24" ry="8"/><ellipse cx="712" cy="78" rx="12" ry="8"/></g>
+            <path id="tFar" d="M0 160Q60 122 130 142T260 130T400 120T540 136T680 118T800 160V200H0Z"/>
+            <g id="tNear">
+              <path d="M0 182Q100 164 200 180T400 176T600 174T800 182V200H0Z" style="fill:var(--hill2)"/>
+              <g style="fill:var(--trunk)"><rect x="67" y="152" width="6" height="28"/><rect x="237" y="158" width="6" height="22"/><rect x="527" y="150" width="6" height="28"/><rect x="687" y="156" width="6" height="22"/></g>
+              <g style="fill:var(--tree)"><circle cx="70" cy="146" r="17"/><circle cx="80" cy="156" r="11"/><circle cx="240" cy="152" r="14"/><circle cx="530" cy="144" r="18"/><circle cx="519" cy="156" r="11"/><circle cx="690" cy="150" r="14"/><ellipse cx="380" cy="184" rx="26" ry="10"/><ellipse cx="610" cy="182" rx="18" ry="8"/></g>
+            </g>
+            <g id="tDash"><rect x="0" y="210" width="36" height="4" rx="2"/><rect x="80" y="210" width="36" height="4" rx="2"/><rect x="160" y="210" width="36" height="4" rx="2"/><rect x="240" y="210" width="36" height="4" rx="2"/><rect x="320" y="210" width="36" height="4" rx="2"/><rect x="400" y="210" width="36" height="4" rx="2"/><rect x="480" y="210" width="36" height="4" rx="2"/><rect x="560" y="210" width="36" height="4" rx="2"/><rect x="640" y="210" width="36" height="4" rx="2"/><rect x="720" y="210" width="36" height="4" rx="2"/></g>
+          </defs>
+          <rect width="800" height="230" fill="url(#skyG)"/>
+          <g fill="#fff" style="opacity:var(--stars)"><circle cx="60" cy="40" r="1.4"/><circle cx="150" cy="28" r="1"/><circle cx="320" cy="50" r="1.2"/><circle cx="390" cy="24" r="1"/><circle cx="560" cy="36" r="1.4"/><circle cx="640" cy="64" r="1"/><circle cx="740" cy="30" r="1.2"/><circle cx="520" cy="80" r="1"/></g>
+          <circle cx="250" cy="74" r="22" style="fill:var(--sun)"/>
+          <g id="lyCloud"><use href="#tCloud"/><use href="#tCloud" x="800"/></g>
+          <g id="lyFar" style="fill:var(--hill1)"><use href="#tFar"/><use href="#tFar" x="800"/></g>
+          <g id="lyNear"><use href="#tNear"/><use href="#tNear" x="800"/></g>
+          <rect y="192" width="800" height="38" style="fill:var(--road)"/>
+          <g id="lyRoad" style="fill:var(--dash)"><use href="#tDash"/><use href="#tDash" x="800"/></g>
+          <g id="bike" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="400" cy="208" rx="96" ry="5" fill="#000" opacity=".2"/>
+            <g style="stroke:var(--frame)">
+              <circle cx="330" cy="168" r="38" stroke-width="5"/><circle cx="470" cy="168" r="38" stroke-width="5"/>
+              <g id="spR" stroke-width="1.5" opacity=".6"><path d="M297 168H363M330 135V201M306.7 144.7L353.3 191.3M353.3 144.7L306.7 191.3"/></g>
+              <g id="spF" stroke-width="1.5" opacity=".6"><path d="M437 168H503M470 135V201M446.7 144.7L493.3 191.3M493.3 144.7L446.7 191.3"/></g>
+            </g>
+            <g opacity=".5"><path id="legF" stroke-width="10" style="stroke:var(--shorts)"/><line id="crF" x1="392" y1="172" x2="392" y2="188" stroke-width="4" style="stroke:var(--frame)"/><line id="shF" stroke-width="5" stroke="#111"/></g>
+            <g stroke-width="6" style="stroke:var(--frame)"><path d="M330 168L392 172L380 118Z"/><path d="M380 118L452 114L458 134L392 172"/><path d="M458 134L470 168"/></g>
+            <g style="stroke:var(--frame)"><path d="M380 118L377 110" stroke-width="4"/><path d="M366 109Q379 104 394 108" stroke-width="6"/><path d="M452 114L456 104H469Q477 107 471 116" stroke-width="4"/><circle cx="392" cy="172" r="10" stroke-width="3"/></g>
+            <path d="M380 108L432 80" stroke-width="16" style="stroke:var(--user)"/>
+            <circle cx="448" cy="64" r="11" stroke="none" style="fill:var(--skin)"/>
+            <path d="M435 63Q436 48 451 49Q463 52 461 63Z" stroke="none" style="fill:var(--user)"/>
+            <path id="legN" stroke-width="10" style="stroke:var(--shorts)"/>
+            <line id="crN" x1="392" y1="172" x2="392" y2="156" stroke-width="4" style="stroke:var(--frame)"/>
+            <line id="shN" stroke-width="5" stroke="#111"/>
+            <path d="M432 82L448 97L467 105" stroke-width="6" style="stroke:var(--skin)"/>
+            <path d="M432 82L441 91" stroke-width="9" style="stroke:var(--user)"/>
+          </g>
+        </svg>
+        <div class="ride-badge glass"><span class="dot" id="zoneDot"></span><span id="zoneTxt">준비 완료</span></div>
+        <button class="goal glass" id="goalBtn" title="목표는 설정 탭에서 바꿀 수 있어요">
+          <span class="ring-wrap"><svg viewBox="0 0 60 60"><circle class="ring-bg" cx="30" cy="30" r="25" fill="none" stroke-width="7"/><circle class="ring" id="goalRing" cx="30" cy="30" r="25" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="157.08" stroke-dashoffset="157.08"/></svg><em class="num" id="goalPct">0%</em></span>
+          <span class="gtxt"><span>오늘 목표</span><b class="num" id="goalTxt">0 / 30분</b></span>
+        </button>
+        <div class="milestone" id="milestone"></div>
       </div>
+      <div class="metrics">
+        <div class="card metric hero" style="--c:var(--accent)"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="gauge"></i></span>속도</div><div><span class="val num" id="mSpeed">0.0</span><span class="unit">km/h</span></div><div class="sub num" id="mSpeedSub">최고 0.0</div></div>
+        <div class="card metric" style="--c:var(--blue)"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="rpm"></i></span>회전수</div><div><span class="val num" id="mRpm">0</span><span class="unit">RPM</span></div>
+          <div class="zone" title="권장 60~90 RPM"><div class="band"></div><div class="needle" id="rpmNeedle"></div></div></div>
+        <div class="card metric" data-k="kcal" style="--c:#f0503c"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="flame"></i></span>칼로리</div><div><span class="val num" id="mKcal">0</span><span class="unit">kcal</span></div><div class="sub" id="mKcalSub">—</div></div>
+        <div class="card metric" style="--c:#9b5cf6"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="clock"></i></span>운동 시간</div><div><span class="val num" id="mTime">00:00</span></div><div class="sub"><span class="state"><i></i><span id="mState">대기 중</span></span></div></div>
+        <div class="card metric" style="--c:var(--good)"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="route"></i></span>거리</div><div><span class="val num" id="mDist">0.00</span><span class="unit">km</span></div><div class="sub num" id="mAvg">평균 0.0 km/h · 0 RPM</div></div>
+        <div class="card metric" style="--c:#e5a50a"><div class="lbl"><span class="chip-ic"><i class="ic" data-icon="bolt"></i></span>파워</div><div><span class="val num" id="mPower">0</span><span class="unit">W</span></div><div class="sub" id="mPowerSub">추정값</div></div>
+      </div>
+     </div>
 
       <aside class="card panel">
         <div class="seg" id="modeSeg">
-          <button data-mode="ble" class="on">블루투스</button>
-          <button data-mode="tap">페달 탭</button>
-          <button data-mode="manual">수동</button>
+          <button data-mode="ble" class="on"><i class="ic" data-icon="bt"></i>블루투스</button>
+          <button data-mode="tap"><i class="ic" data-icon="hand"></i>페달 탭</button>
+          <button data-mode="manual"><i class="ic" data-icon="slider"></i>수동</button>
         </div>
 
         <div id="modeBle" class="ble-box">
@@ -219,7 +389,7 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
         </div>
 
         <div id="modeTap" hidden>
-          <button class="tap-btn" id="tapBtn">여기를 탭<small>오른발 페달이 한 바퀴 돌 때마다 한 번씩</small></button>
+          <button class="tap-btn" id="tapBtn"><svg class="crank" id="tapCrank" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="15" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="4 3"/><line x1="32" y1="32" x2="32" y2="8" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><rect x="21" y="2" width="22" height="9" rx="3" fill="currentColor"/><circle cx="32" cy="32" r="6" fill="currentColor"/></svg>여기를 탭<small>오른발 페달이 한 바퀴 돌 때마다 한 번씩</small></button>
         </div>
 
         <div id="modeManual" hidden>
@@ -242,7 +412,7 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
 
         <div class="ctrl">
           <button class="btn primary big" id="startBtn">시작</button>
-          <button class="btn danger big" id="stopBtn" disabled>종료</button>
+          <button class="btn danger big" id="stopBtn" disabled><i class="ic" data-icon="stop"></i><span>종료</span></button>
         </div>
       </aside>
     </div>
@@ -300,6 +470,7 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
         <label class="field">바퀴 둘레 (m)<input type="number" id="setWheel" step="0.01" min="0.5" max="3"></label>
         <label class="field">기어비 (페달 1회전당 바퀴 회전수)<input type="number" id="setGear" step="0.1" min="0.5" max="6"></label>
         <label class="field">화면 테마<select id="setTheme"><option value="auto">시스템 설정 따라가기</option><option value="light">밝게</option><option value="dark">어둡게</option></select></label>
+        <label class="field">하루 목표 운동 시간 (분)<input type="number" id="setGoal" min="5" max="300" step="5"></label>
       </div>
       <p class="small-note" style="margin-top:14px">
         • 자전거가 블루투스로 속도·파워를 보내면 그 값을 그대로 씁니다. 회전수만 오는 경우 속도는 회전수 × 기어비 × 바퀴 둘레로 계산합니다.<br>
@@ -345,7 +516,15 @@ dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
 </form></dialog>
 
 <dialog id="dlgSum"><form method="dialog">
+  <svg class="trophy" viewBox="0 0 96 96" aria-hidden="true">
+    <circle cx="48" cy="48" r="46" style="fill:var(--accent-soft)"/>
+    <path d="M30 26h-7a8 8 0 0 0 8 14M66 26h7a8 8 0 0 1-8 14" fill="none" stroke="#f5b72f" stroke-width="4"/>
+    <path d="M30 22h36v14a18 18 0 0 1-36 0z" fill="#f5b72f"/>
+    <rect x="44" y="52" width="8" height="12" fill="#e19c12"/><rect x="34" y="64" width="28" height="8" rx="2" fill="#e19c12"/>
+    <path d="M48 27l3 6 6.5.9-4.7 4.5 1.1 6.4L48 41.8l-5.9 3 1.1-6.4-4.7-4.5 6.5-.9z" fill="#fff" opacity=".9"/>
+  </svg>
   <h2>운동 완료! 🎉</h2>
+  <p class="small-note" id="sumNote" style="text-align:center;margin:0"></p>
   <div class="sum-grid" id="sumGrid"></div>
   <div class="acts"><button class="btn primary">확인</button></div>
 </form></dialog>
@@ -363,7 +542,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- storage ---------- */
-function defaults(){ return { users:[], currentUserId:null, sessions:[], settings:{ wheel:2.1, gear:2.8, theme:'auto', level:5, mode:'ble' } }; }
+function defaults(){ return { users:[], currentUserId:null, sessions:[], settings:{ wheel:2.1, gear:2.8, theme:'auto', level:5, mode:'ble', goal:30 } }; }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
@@ -391,6 +570,60 @@ function fmtDur(sec){ const m=Math.round(sec/60); return m>=60 ? `${Math.floor(m
 const fmt1 = v => (Math.round(v*10)/10).toFixed(1);
 const ymKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
 const monthLabel = (y,m) => `${y}년 ${m+1}월`;
+const sameDay = (a,b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* ---------- icons & effects ---------- */
+const ICONS = {
+  bike:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/>',
+  list:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/>',
+  bars:'<path d="M3 21h18"/><rect x="5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="5" width="3" height="13" rx="1"/><rect x="16" y="8" width="3" height="10" rx="1"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-3.5-5.8"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  gauge:'<path d="M4.9 19a9 9 0 1 1 14.2 0"/><path d="M12 14l4.5-4.5"/><circle cx="12" cy="14" r="1.5"/>',
+  rpm:'<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/>',
+  flame:'<path d="M12 22c3.9 0 7-2.9 7-6.8 0-3.6-2.4-5.6-3.6-8.2-.4 1.6-1.4 2.8-2.6 3.2C13 7.4 11.6 4.6 9.5 2.5 9.4 6.6 5 9 5 15.2 5 19.1 8.1 22 12 22z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  route:'<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"/>',
+  bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>',
+  play:'<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
+  pause:'<rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>',
+  stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
+  bt:'<path d="m7 7 10 10-5 5V2l5 5L7 17"/>',
+  hand:'<path d="M10 13V5.5a1.5 1.5 0 0 1 3 0V12l4.2.8a2 2 0 0 1 1.6 2.2l-.6 4.5A2 2 0 0 1 16.2 21H11a2 2 0 0 1-1.6-.8L6 15.6a1.5 1.5 0 0 1 2.3-1.9L10 15"/><path d="M7 7a4.5 4.5 0 0 1 9 0"/>',
+  slider:'<path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/>',
+  pen:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  check:'<path d="m5 12 5 5 9-10"/>'
+};
+const ic = n => `<i class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg></i>`;
+function hydrateIcons(root = document){ root.querySelectorAll('i.ic[data-icon]').forEach(i => { i.outerHTML = ic(i.dataset.icon); }); }
+
+function countUp(el, to, f){
+  if (reduceMotion || !to){ el.textContent = f(to); return; }
+  const t0 = performance.now(), D = 750;
+  (function step(t){ const p = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - p, 3); el.textContent = f(to * e); if (p < 1) requestAnimationFrame(step); })(t0);
+}
+function confetti(host = document.body){
+  if (reduceMotion) return;
+  const c = document.createElement('canvas'); c.className = 'confetti'; host.appendChild(c);
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  c.width = w * dpr; c.height = h * dpr; const x = c.getContext('2d'); x.scale(dpr, dpr);
+  const ps = Array.from({ length:150 }, () => ({ x:w/2 + (Math.random()-.5)*w*.3, y:h*.38, vx:(Math.random()-.5)*15, vy:-Math.random()*15-4,
+    r:Math.random()*Math.PI, vr:(Math.random()-.5)*.4, s:6+Math.random()*7, c:PALETTE[Math.random()*PALETTE.length|0] }));
+  const t0 = performance.now();
+  (function f(t){
+    const e = t - t0; x.clearRect(0, 0, w, h);
+    ps.forEach(p => { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.globalAlpha = Math.max(0, 1 - e/2800); x.fillStyle = p.c; x.fillRect(-p.s/2, -p.s/4, p.s, p.s/2); x.restore(); });
+    if (e < 2800) requestAnimationFrame(f); else c.remove();
+  })(t0);
+}
+function milestone(txt){ const el = $('#milestone'); el.textContent = txt; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+const ILL_EMPTY = `<svg class="ill" viewBox="0 0 180 120" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M20 102h140" opacity=".3"/><circle cx="52" cy="80" r="20"/><circle cx="128" cy="80" r="20"/>
+  <path d="M52 80l30 2-6-28zM76 54l38-2 4 10-36 20M118 62l10 18M68 48h16M114 52l3-8h9"/>
+  <g class="zz" fill="var(--accent)" stroke="none" font-weight="800"><text x="130" y="36" font-size="20">z</text><text x="146" y="22" font-size="14">z</text><text x="158" y="12" font-size="10">z</text></g></svg>`;
 
 /* ---------- formulas ---------- */
 const speedFromRpm = rpm => rpm * db.settings.gear * db.settings.wheel * 60 / 1000;           // km/h
@@ -412,11 +645,15 @@ function show(view){
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
 $('#userChip').addEventListener('click', () => show('users'));
-function renderChip(){ const u=curUser(); $('#userChip .dot').style.background=u.color; $('#userChip .nm').textContent=u.name; }
+function renderChip(){
+  const u = curUser(), d = $('#userChip .dot');
+  d.style.background = u.color; d.textContent = [...u.name][0] || ''; $('#userChip .nm').textContent = u.name;
+  document.documentElement.style.setProperty('--user', u.color);
+}
 
 /* ---------- workout ---------- */
 const W = { state:'idle', elapsed:0, moving:0, distance:0, kcal:0, rpmInt:0, powerInt:0, maxSpeed:0,
-            last:performance.now(), startedAt:null, taps:[], manualRpm:60, live:{rpm:0,speed:0,power:0} };
+            last:performance.now(), startedAt:null, taps:[], manualRpm:60, live:{rpm:0,speed:0,power:0}, lastKm:0, goalHit:false };
 let mode = db.settings.mode || 'ble';
 let level = db.settings.level || 5;
 
@@ -435,9 +672,15 @@ $('#lvUp').addEventListener('click', () => setLevel(level+1));
 
 // tap
 const tapBtn = $('#tapBtn');
+let tapTurns = 0;
 tapBtn.addEventListener('pointerdown', e => {
   e.preventDefault(); W.taps.push(performance.now());
   tapBtn.classList.add('hit'); setTimeout(() => tapBtn.classList.remove('hit'), 90);
+  const r = tapBtn.getBoundingClientRect(), s = document.createElement('span');
+  s.className = 'ripple'; s.style.left = (e.clientX - r.left) + 'px'; s.style.top = (e.clientY - r.top) + 'px';
+  tapBtn.appendChild(s); setTimeout(() => s.remove(), 650);
+  $('#tapCrank').style.transform = `rotate(${++tapTurns * 360}deg)`;
+  try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
 });
 // manual
 function setManual(v){ W.manualRpm = Math.max(0, Math.min(150, v)); $('#manualRpm').value = W.manualRpm; $('#manualOut').textContent = W.manualRpm; }
@@ -475,6 +718,8 @@ function tick(){
     W.distance += L.speed * dt / 3600;
     W.kcal += kcalPerMin(L.power, curUser().weight) * dt / 60;
     W.maxSpeed = Math.max(W.maxSpeed, L.speed);
+    const km = Math.floor(W.distance);
+    if (km > W.lastKm){ W.lastKm = km; milestone(`🚩 ${km} km 돌파!`); }
   }
   W.last = now;
   renderLive();
@@ -498,7 +743,71 @@ function renderLive(){
   $('#mPowerSub').textContent = L.src;
   $('#mState').textContent = { idle:'대기 중', running:'운동 중', paused:'일시정지' }[W.state];
   $('#levelNote').textContent = (mode === 'ble' && ble.level != null) ? '자전거에서 받은 값' : '추정 계산에 사용';
+  const [zc, zt] = zoneOf(L.rpm);
+  if (zt !== lastZone){ lastZone = zt; $('#zoneTxt').textContent = zt; $('#zoneDot').style.background = zc; $('#rpmNeedle').style.background = zc; }
+  renderGoal();
 }
+let lastZone = '';
+function zoneOf(rpm){
+  if (rpm < 1) return ['var(--muted)', W.state === 'running' ? '페달을 돌려 주세요' : '준비 완료'];
+  if (rpm < 60) return ['var(--blue)', '가볍게 달리는 중'];
+  if (rpm <= 90) return ['var(--good)', '적정 회전수 👍'];
+  return ['var(--accent)', '고속 질주 🔥'];
+}
+function todaySavedMin(){
+  const now = new Date(), id = curUser().id;
+  return db.sessions.reduce((a, s) => a + (s.userId === id && sameDay(new Date(s.date), now) ? s.duration : 0), 0) / 60;
+}
+function renderGoal(){
+  const goal = db.settings.goal || 30;
+  const mins = todaySavedMin() + (W.state !== 'idle' ? W.elapsed / 60 : 0);
+  const p = Math.min(1, mins / goal);
+  $('#goalRing').style.strokeDashoffset = (157.08 * (1 - p)).toFixed(2) + 'px';
+  $('#goalPct').textContent = Math.floor(p * 100) + '%';
+  $('#goalTxt').textContent = `${Math.floor(mins)} / ${goal}분`;
+  $('#goalBtn').classList.toggle('done', p >= 1);
+  if (W.state === 'running' && !W.goalHit && p >= 1){ W.goalHit = true; confetti(); toast('🎉 오늘 목표 달성! 대단해요'); }
+}
+$('#goalBtn').addEventListener('click', () => { show('settings'); setTimeout(() => $('#setGoal').focus(), 60); });
+
+/* ---------- ride scene animation ---------- */
+(() => {
+  const g = id => document.getElementById(id);
+  const ly = { cloud:g('lyCloud'), far:g('lyFar'), near:g('lyNear'), road:g('lyRoad') };
+  const spR = g('spR'), spF = g('spF'), view = g('view-workout');
+  const parts = { n:[g('legN'), g('crN'), g('shN')], f:[g('legF'), g('crF'), g('shF')] };
+  const HIP = [380, 108], BB = [392, 172], CR = 16, L = 41;
+  let x = 0, cloud = 0, wheel = 0, crank = 0.6, lastT = performance.now();
+  const f1 = v => v.toFixed(1);
+  function leg([path, cr, sh], ang){
+    const fx = BB[0] + CR * Math.cos(ang), fy = BB[1] + CR * Math.sin(ang);
+    const dx = fx - HIP[0], dy = fy - HIP[1], d0 = Math.hypot(dx, dy), d = Math.min(d0, 2*L - 0.5);
+    const ux = dx / d0, uy = dy / d0, a = d / 2, h = Math.sqrt(Math.max(0, L*L - a*a));
+    const px = HIP[0] + ux * a, py = HIP[1] + uy * a;
+    let kx = px - uy * h, ky = py + ux * h;
+    if (px + uy * h > kx){ kx = px + uy * h; ky = py - ux * h; }   // 무릎은 앞쪽으로
+    path.setAttribute('d', `M${HIP[0]} ${HIP[1]}L${f1(kx)} ${f1(ky)}L${f1(fx)} ${f1(fy)}`);
+    cr.setAttribute('x2', f1(fx)); cr.setAttribute('y2', f1(fy));
+    sh.setAttribute('x1', f1(fx - 5)); sh.setAttribute('y1', f1(fy + 1)); sh.setAttribute('x2', f1(fx + 9)); sh.setAttribute('y2', f1(fy + 1));
+  }
+  function draw(){
+    const tr = (el, v) => el.setAttribute('transform', `translate(${f1(-(v % 800))} 0)`);
+    tr(ly.cloud, cloud); tr(ly.far, x * .15); tr(ly.near, x * .45); tr(ly.road, x);
+    const deg = f1(wheel * 180 / Math.PI % 360);
+    spR.setAttribute('transform', `rotate(${deg} 330 168)`); spF.setAttribute('transform', `rotate(${deg} 470 168)`);
+    leg(parts.n, crank); leg(parts.f, crank + Math.PI);
+  }
+  function frame(now){
+    const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
+    if (view.classList.contains('active') && !document.hidden){
+      const sp = (W.live.speed || 0) / 3.6, rpm = W.live.rpm || 0, px = sp * 30 * dt;
+      x += px; cloud += dt * 6 + px * .05; wheel += px / 38; crank += rpm / 60 * 2 * Math.PI * dt;
+      draw();
+    }
+    requestAnimationFrame(frame);
+  }
+  draw(); requestAnimationFrame(frame);
+})();
 
 let wakeLock = null;
 async function lockScreen(){ try{ if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){} }
@@ -506,9 +815,12 @@ function unlockScreen(){ try{ wakeLock && wakeLock.release(); }catch(e){} wakeLo
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && W.state === 'running') lockScreen(); });
 
 $('#startBtn').addEventListener('click', () => {
-  if (W.state === 'idle'){ W.startedAt = new Date(); W.state = 'running'; lockScreen(); }
+  if (W.state === 'idle'){
+    W.startedAt = new Date(); W.state = 'running'; lockScreen();
+    W.goalHit = todaySavedMin() >= (db.settings.goal || 30); milestone('출발! 🚴');
+  }
   else if (W.state === 'running'){ W.state = 'paused'; }
-  else { W.state = 'running'; }
+  else { W.state = 'running'; milestone('다시 출발! 💪'); }
   W.last = performance.now();
   updateCtrl();
 });
@@ -529,15 +841,20 @@ $('#stopBtn').addEventListener('click', () => {
     [fmtClock(s.duration),'운동 시간'],[s.distance.toFixed(2)+' km','거리'],[s.kcal+' kcal','칼로리'],
     [fmt1(s.avgSpeed)+' km/h','평균 속도'],[s.avgRpm+' RPM','평균 회전수'],[s.avgPower+' W','평균 파워']
   ].map(([v,l]) => `<div><b class="num">${v}</b><span>${l}</span></div>`).join('');
+  const goal = db.settings.goal || 30, tm = todaySavedMin();
+  $('#sumNote').textContent = tm >= goal ? `오늘 ${Math.floor(tm)}분 운동 — 목표 ${goal}분 달성! 🎯` : `오늘 목표(${goal}분)까지 ${Math.ceil(goal - tm)}분 남았어요`;
   $('#dlgSum').showModal();
+  confetti($('#dlgSum'));
   resetWorkout();
 });
 function resetWorkout(){
-  Object.assign(W, { state:'idle', elapsed:0, moving:0, distance:0, kcal:0, rpmInt:0, powerInt:0, maxSpeed:0, startedAt:null });
+  Object.assign(W, { state:'idle', elapsed:0, moving:0, distance:0, kcal:0, rpmInt:0, powerInt:0, maxSpeed:0, startedAt:null, lastKm:0, goalHit:false });
   unlockScreen(); updateCtrl();
 }
 function updateCtrl(){
-  $('#startBtn').textContent = { idle:'시작', running:'일시정지', paused:'계속' }[W.state];
+  const [icn, lbl] = { idle:['play','시작'], running:['pause','일시정지'], paused:['play','계속'] }[W.state];
+  $('#startBtn').innerHTML = ic(icn) + `<span>${lbl}</span>`;
+  document.body.classList.toggle('running', W.state === 'running');
   $('#stopBtn').disabled = W.state === 'idle';
   $('#userChip').disabled = W.state !== 'idle';
 }
@@ -638,12 +955,18 @@ function sessionsFor(userId, y, m){
 function renderRecords(){
   $('#recMonthLbl').textContent = monthLabel(recYM.y, recYM.m);
   const list = sessionsFor(curUser().id, recYM.y, recYM.m).sort((a,b) => b.date.localeCompare(a.date));
-  if (!list.length){ $('#recTable').innerHTML = `<div class="empty">${esc(curUser().name)}님의 ${recYM.m+1}월 기록이 없습니다.</div>`; return; }
+  if (!list.length){
+    $('#recTable').innerHTML = `<div class="empty">${ILL_EMPTY}<div><b>${esc(curUser().name)}님의 ${recYM.m+1}월 기록이 아직 없어요</b></div>
+      <div class="small-note">운동을 마치면 여기에 자동으로 쌓여요</div><button class="btn primary" id="goRide">${ic('bike')}운동하러 가기</button></div>`;
+    $('#goRide').addEventListener('click', () => show('workout'));
+    return;
+  }
+  const SRC = { ble:['bt','블루투스'], tap:['hand','페달 탭'], manual:['slider','수동'], entry:['pen','직접 입력'] };
   const tot = list.reduce((a,s) => ({ d:a.d+s.duration, k:a.k+s.distance, c:a.c+s.kcal }), {d:0,k:0,c:0});
   const day = ['일','월','화','수','목','금','토'];
   $('#recTable').innerHTML = `<table class="num"><thead><tr><th>날짜</th><th>시간</th><th>거리</th><th>평균 속도</th><th>평균 RPM</th><th>파워</th><th>칼로리</th><th></th></tr></thead><tbody>
-    ${list.map(s => { const d = new Date(s.date); return `<tr>
-      <td>${d.getMonth()+1}/${d.getDate()} (${day[d.getDay()]}) <span class="muted">${pad2(d.getHours())}:${pad2(d.getMinutes())}</span></td>
+    ${list.map((s, i) => { const d = new Date(s.date), [sn, st] = SRC[s.source] || SRC.entry; return `<tr style="animation-delay:${Math.min(i, 20) * 30}ms">
+      <td><span class="src" title="${st}">${ic(sn)}</span>${d.getMonth()+1}/${d.getDate()} (${day[d.getDay()]}) <span class="muted">${pad2(d.getHours())}:${pad2(d.getMinutes())}</span></td>
       <td>${fmtClock(s.duration)}</td><td>${s.distance.toFixed(2)} km</td><td>${fmt1(s.avgSpeed)} km/h</td>
       <td>${s.avgRpm}</td><td>${s.avgPower||'-'} W</td><td>${s.kcal} kcal</td>
       <td><button class="del" data-del="${s.id}">삭제</button></td></tr>`; }).join('')}
@@ -704,7 +1027,7 @@ function barChart(el, { labels, values, color, highlight = -1, fmt, onPick }){
   values.forEach((v, i) => {
     const h = ch * v / max, x = pl + step * i + (step - bw) / 2, y = pt + ch - h;
     const op = highlight < 0 || i === highlight ? 1 : 0.45;
-    if (v > 0) s += `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(h,2)}" rx="${Math.min(4,bw/3)}" fill="${color}" opacity="${op}"/>`;
+    if (v > 0) s += `<rect class="bar" style="animation-delay:${i * (n > 12 ? 12 : 40)}ms" x="${x}" y="${y}" width="${bw}" height="${Math.max(h,2)}" rx="${Math.min(4,bw/3)}" fill="${color}" opacity="${op}"/>`;
     if (v > 0 && n <= 12) s += `<text x="${x+bw/2}" y="${y-6}" text-anchor="middle" fill="${css('--text')}" font-weight="600">${fmt(v)}</text>`;
     if (i % every === 0 || i === highlight) s += `<text x="${x+bw/2}" y="${H-8}" text-anchor="middle" fill="${i===highlight?css('--text'):muted}" font-weight="${i===highlight?700:400}">${labels[i]}</text>`;
     s += `<rect data-i="${i}" x="${pl+step*i}" y="${pt}" width="${step}" height="${ch+pb}" fill="transparent"/>`;
@@ -727,16 +1050,17 @@ function renderStats(){
   const cur = sessionsFor(user.id, y, m), p = shiftYM(statYM, -1), prev = sessionsFor(user.id, p.y, p.m);
   const sum = (arr, f) => arr.reduce((a, s) => a + f(s), 0);
   const tiles = [
-    ['운동 횟수', cur.length, prev.length, v => v, '회'],
-    ['총 운동 시간', sum(cur, s=>s.duration)/60, sum(prev, s=>s.duration)/60, v => Math.round(v).toLocaleString(), '분'],
-    ['총 거리', sum(cur, s=>s.distance), sum(prev, s=>s.distance), v => v.toFixed(1), 'km'],
-    ['총 칼로리', sum(cur, s=>s.kcal), sum(prev, s=>s.kcal), v => Math.round(v).toLocaleString(), 'kcal']
+    ['운동 횟수', cur.length, prev.length, v => Math.round(v), '회', 'calendar', 'var(--accent)'],
+    ['총 운동 시간', sum(cur, s=>s.duration)/60, sum(prev, s=>s.duration)/60, v => Math.round(v).toLocaleString(), '분', 'clock', '#9b5cf6'],
+    ['총 거리', sum(cur, s=>s.distance), sum(prev, s=>s.distance), v => v.toFixed(1), 'km', 'route', 'var(--good)'],
+    ['총 칼로리', sum(cur, s=>s.kcal), sum(prev, s=>s.kcal), v => Math.round(v).toLocaleString(), 'kcal', 'flame', '#f0503c']
   ];
-  $('#tiles').innerHTML = tiles.map(([l, v, pv, f, u]) => {
+  $('#tiles').innerHTML = tiles.map(([l, v, pv, f, u, icn, c]) => {
     let d = '지난달 기록 없음', cls = '';
     if (pv > 0){ const pct = Math.round((v - pv) / pv * 100); d = `지난달 대비 ${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%`; cls = pct >= 0 ? 'up' : 'down'; }
-    return `<div class="card tile"><div class="lbl">${l}</div><div class="v num">${f(v)}<small>${u}</small></div><div class="d ${cls}">${d}</div></div>`;
+    return `<div class="card tile lift" style="--c:${c}"><div class="lbl"><span class="chip-ic">${ic(icn)}</span>${l}</div><div class="v num"><span class="cnt">${f(0)}</span><small>${u}</small></div><div class="d ${cls}">${d}</div></div>`;
   }).join('');
+  $$('#tiles .cnt').forEach((el, i) => countUp(el, tiles[i][1], tiles[i][3]));
 
   // daily
   const days = new Date(y, m+1, 0).getDate();
@@ -768,10 +1092,13 @@ let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTime
 let editingId = null;
 function renderUsers(){
   $('#userList').innerHTML = db.users.map(u => {
-    const n = db.sessions.filter(s => s.userId === u.id).length;
-    return `<div class="card ucard ${u.id===curUser().id?'cur':''}">
-      <div class="nm"><span class="dot" style="background:${u.color};width:18px;height:18px"></span>${esc(u.name)}${u.id===curUser().id?' <span class="muted" style="font-size:14px">(선택됨)</span>':''}</div>
-      <div class="meta">${u.weight}kg${u.height?' · '+u.height+'cm':''}${u.age?' · '+u.age+'세':''} · ${u.sex==='F'?'여':'남'}<br>운동 기록 ${n}회</div>
+    const mine = db.sessions.filter(s => s.userId === u.id), isCur = u.id === curUser().id;
+    const km = mine.reduce((a, s) => a + s.distance, 0), kc = mine.reduce((a, s) => a + s.kcal, 0);
+    return `<div class="card ucard lift ${isCur?'cur':''}">
+      <div class="head"><div class="avatar" style="background:${u.color}">${esc([...u.name][0] || '?')}${isCur?`<span class="chk">${ic('check')}</span>`:''}</div>
+        <div><div class="nm">${esc(u.name)}${isCur?' <span class="muted" style="font-size:14px">(선택됨)</span>':''}</div>
+        <div class="meta">${u.weight}kg${u.height?' · '+u.height+'cm':''}${u.age?' · '+u.age+'세':''} · ${u.sex==='F'?'여':'남'}</div></div></div>
+      <div class="stats3 num"><div><b>${mine.length}</b>운동 횟수</div><div><b>${km.toFixed(1)}</b>총 km</div><div><b>${Math.round(kc).toLocaleString()}</b>총 kcal</div></div>
       <div class="acts">
         <button class="btn ${u.id===curUser().id?'':'primary'}" data-pick="${u.id}" ${u.id===curUser().id?'disabled':''}>선택</button>
         <button class="btn" data-edit="${u.id}">수정</button>
@@ -818,7 +1145,8 @@ $$('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dia
 
 /* ---------- settings ---------- */
 function applyTheme(){ const t = db.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
-function renderSettings(){ $('#setWheel').value = db.settings.wheel; $('#setGear').value = db.settings.gear; $('#setTheme').value = db.settings.theme; }
+function renderSettings(){ $('#setWheel').value = db.settings.wheel; $('#setGear').value = db.settings.gear; $('#setTheme').value = db.settings.theme; $('#setGoal').value = db.settings.goal || 30; }
+$('#setGoal').addEventListener('change', e => { const v = Math.round(+e.target.value); if (v >= 5){ db.settings.goal = v; save(); renderGoal(); toast('저장했어요'); } });
 $('#setWheel').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.wheel = v; save(); toast('저장했어요'); } });
 $('#setGear').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.gear = v; save(); toast('저장했어요'); } });
 $('#setTheme').addEventListener('change', e => { db.settings.theme = e.target.value; save(); applyTheme(); });
@@ -845,7 +1173,7 @@ $('#resetBtn').addEventListener('click', () => {
 });
 
 /* ---------- init ---------- */
-applyTheme(); renderChip(); setMode(mode); setLevel(level); setManual(60); updateCtrl(); renderLive();
+hydrateIcons(); applyTheme(); renderChip(); setMode(mode); setLevel(level); setManual(60); updateCtrl(); renderLive();
 })();
 </script>
 </body>
