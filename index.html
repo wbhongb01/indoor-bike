@@ -264,6 +264,24 @@ tbody tr{animation:rowIn .35s ease both}
 .sum-grid div:nth-child(6){animation-delay:.3s}
 .confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:100}
 
+/* sync */
+.settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
+a.btn{text-decoration:none;color:inherit}
+.small-note a{color:var(--blue);font-weight:600}
+.sync-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;flex:none;
+  border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--muted)}
+.sync-chip .ic{width:22px;height:22px}
+.sync-chip::after{content:"";position:absolute;right:7px;bottom:8px;width:10px;height:10px;border-radius:50%;border:2px solid var(--surface2);background:var(--muted)}
+.sync-chip.ok{color:var(--good)} .sync-chip.ok::after{background:var(--good)}
+.sync-chip.wait::after,.sync-chip.busy::after{background:#e5a50a}
+.sync-chip.err{color:var(--danger)} .sync-chip.err::after{background:var(--danger)}
+.sync-chip.busy .ic{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sync-badge{font-size:14px;font-weight:700;padding:6px 12px;border-radius:999px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.sync-badge.ok{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.sync-badge.err{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.sync-badge.wait,.sync-badge.busy{background:color-mix(in srgb,#e5a50a 18%,transparent);color:#b7820a}
+
 /* portrait tablet / narrow */
 @media (max-width:1000px){
   .wk{grid-template-columns:1fr}
@@ -307,6 +325,7 @@ tbody tr{animation:rowIn .35s ease both}
     <button class="tab" data-view="users"><i class="ic" data-icon="users"></i><span>사용자</span></button>
     <button class="tab" data-view="settings"><i class="ic" data-icon="gear"></i><span>설정</span></button>
   </nav>
+  <button class="sync-chip" id="syncChip" hidden title="구글 시트 동기화"></button>
   <button class="user-chip" id="userChip"><span class="dot"></span><span class="nm"></span></button>
 </header>
 
@@ -427,6 +446,7 @@ tbody tr{animation:rowIn .35s ease both}
         <button class="icon-btn" data-recmonth="1">›</button>
       </div>
       <div class="spacer"></div>
+      <a class="btn" id="openSheetBtn" target="_blank" rel="noopener" hidden><i class="ic" data-icon="sheet"></i>시트에서 보기</a>
       <button class="btn primary" id="addRecBtn">+ 직접 기록 추가</button>
     </div>
     <div class="card table-wrap" id="recTable"></div>
@@ -464,7 +484,33 @@ tbody tr{animation:rowIn .35s ease both}
 
   <!-- SETTINGS -->
   <section class="view" id="view-settings">
-    <div class="card" style="padding:20px;max-width:760px">
+   <div class="settings-wrap">
+    <div class="card" id="syncCard" style="padding:20px">
+      <div class="row" style="margin-bottom:6px">
+        <span class="chip-ic" style="--c:#1e8e3e"><i class="ic" data-icon="sheet"></i></span>
+        <h2 style="margin:0">구글 시트 연동</h2>
+        <div class="spacer"></div>
+        <span class="sync-badge" id="syncBadge">연결 안 됨</span>
+      </div>
+      <p class="small-note" style="margin:6px 0 14px">사용자와 운동 기록을 내 구글 시트에 저장해서 여러 기기에서 함께 씁니다. 시트의 '월별 요약' 탭에서 월간 기록도 바로 볼 수 있어요.
+        <a href="https://github.com/wbhongb01/indoor-bike/blob/main/google-sheets/README.md" target="_blank" rel="noopener">설정 방법 보기</a></p>
+      <div id="syncForm">
+        <div class="grid2">
+          <label class="field">연결 주소 (웹 앱 URL)<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false"></label>
+          <label class="field">가족 비밀번호<input id="syncKey" type="password" autocomplete="off"></label>
+        </div>
+        <div class="row" style="margin-top:14px"><button class="btn primary" id="syncConnect"><i class="ic" data-icon="cloud"></i>연결하기</button></div>
+      </div>
+      <div id="syncLinked" hidden>
+        <div class="ble-status" id="syncStatus"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" id="syncNow"><i class="ic" data-icon="rpm"></i>지금 동기화</button>
+          <a class="btn" id="syncOpen" target="_blank" rel="noopener" hidden><i class="ic" data-icon="external"></i>시트 열기</a>
+          <button class="btn danger" id="syncOff">연결 해제</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:20px">
       <h2>계산 설정</h2>
       <div class="grid2">
         <label class="field">바퀴 둘레 (m)<input type="number" id="setWheel" step="0.01" min="0.5" max="3"></label>
@@ -482,8 +528,9 @@ tbody tr{animation:rowIn .35s ease both}
         <label class="btn" style="display:inline-flex;align-items:center">백업 불러오기<input type="file" id="importFile" accept="application/json,.json" hidden></label>
         <button class="btn danger" id="resetBtn">모든 데이터 삭제</button>
       </div>
-      <p class="small-note">데이터는 이 기기의 브라우저에만 저장됩니다. 브라우저 데이터를 지우기 전에 백업해 두세요.</p>
+      <p class="small-note">구글 시트에 연결하지 않으면 데이터는 이 기기의 브라우저에만 저장됩니다. 브라우저 데이터를 지우기 전에 백업해 두세요.</p>
     </div>
+   </div>
   </section>
 </main>
 
@@ -542,13 +589,16 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- storage ---------- */
-function defaults(){ return { users:[], currentUserId:null, sessions:[], settings:{ wheel:2.1, gear:2.8, theme:'auto', level:5, mode:'ble', goal:30 } }; }
+function defaults(){ return { users:[], currentUserId:null, sessions:[], settings:{ wheel:2.1, gear:2.8, theme:'auto', level:5, mode:'ble', goal:30 },
+  sync:{ url:'', key:'', outbox:[], lastSync:0, sheetUrl:'' } }; }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
     if (d && Array.isArray(d.users) && Array.isArray(d.sessions)){
       const def = defaults();
-      return { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) } };
+      const sync = { ...def.sync, ...(d.sync||{}) };
+      if (!Array.isArray(sync.outbox)) sync.outbox = [];
+      return { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) }, sync };
     }
   }catch(e){}
   return defaults();
@@ -594,7 +644,11 @@ const ICONS = {
   hand:'<path d="M10 13V5.5a1.5 1.5 0 0 1 3 0V12l4.2.8a2 2 0 0 1 1.6 2.2l-.6 4.5A2 2 0 0 1 16.2 21H11a2 2 0 0 1-1.6-.8L6 15.6a1.5 1.5 0 0 1 2.3-1.9L10 15"/><path d="M7 7a4.5 4.5 0 0 1 9 0"/>',
   slider:'<path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/>',
   pen:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
-  check:'<path d="m5 12 5 5 9-10"/>'
+  check:'<path d="m5 12 5 5 9-10"/>',
+  cloud:'<path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9.5z"/>',
+  cloudOff:'<path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9.5z"/><path d="M3 3l18 18"/>',
+  sheet:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+  external:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'
 };
 const ic = n => `<i class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg></i>`;
 function hydrateIcons(root = document){ root.querySelectorAll('i.ic[data-icon]').forEach(i => { i.outerHTML = ic(i.dataset.icon); }); }
@@ -836,7 +890,7 @@ $('#stopBtn').addEventListener('click', () => {
     avgPower:Math.round(W.moving ? W.powerInt / W.moving : 0), kcal:Math.round(W.kcal),
     level, source:mode
   };
-  db.sessions.push(s); save();
+  db.sessions.push(s); save(); qSession(s);
   $('#sumGrid').innerHTML = [
     [fmtClock(s.duration),'운동 시간'],[s.distance.toFixed(2)+' km','거리'],[s.kcal+' kcal','칼로리'],
     [fmt1(s.avgSpeed)+' km/h','평균 속도'],[s.avgRpm+' RPM','평균 회전수'],[s.avgPower+' W','평균 파워']
@@ -973,7 +1027,7 @@ function renderRecords(){
     </tbody><tfoot><tr><td>합계 ${list.length}회</td><td>${fmtDur(tot.d)}</td><td>${tot.k.toFixed(2)} km</td><td></td><td></td><td></td><td>${Math.round(tot.c)} kcal</td><td></td></tr></tfoot></table>`;
   $$('[data-del]').forEach(b => b.addEventListener('click', () => {
     if (!confirm('이 기록을 삭제할까요?')) return;
-    db.sessions = db.sessions.filter(s => s.id !== b.dataset.del); save(); renderRecords();
+    db.sessions = db.sessions.filter(s => s.id !== b.dataset.del); save(); queue({ op:'delSession', id:b.dataset.del }); renderRecords();
   }));
 }
 $('#addRecBtn').addEventListener('click', () => {
@@ -989,10 +1043,10 @@ $('#recForm').addEventListener('submit', e => {
   const distance = f.distance.value !== '' ? +f.distance.value : speedFromRpm(rpm) * minutes / 60;
   const power = estPower(rpm, lv);
   const kcal = f.kcal.value !== '' ? +f.kcal.value : kcalPerMin(power, curUser().weight) * minutes;
-  db.sessions.push({ id:uid(), userId:curUser().id, date:new Date(f.date.value).toISOString(), duration:sec,
+  const ns = { id:uid(), userId:curUser().id, date:new Date(f.date.value).toISOString(), duration:sec,
     distance:+distance.toFixed(3), avgRpm:Math.round(rpm), avgSpeed:+(distance/(minutes/60)).toFixed(2),
-    maxSpeed:0, avgPower:Math.round(power), kcal:Math.round(kcal), level:lv, source:'entry' });
-  save(); $('#dlgRec').close();
+    maxSpeed:0, avgPower:Math.round(power), kcal:Math.round(kcal), level:lv, source:'entry' };
+  db.sessions.push(ns); save(); qSession(ns); $('#dlgRec').close();
   const d = new Date(f.date.value); recYM = { y:d.getFullYear(), m:d.getMonth() }; renderRecords(); toast('기록을 추가했어요');
 });
 
@@ -1117,7 +1171,7 @@ function renderUsers(){
     if (!confirm(`${u.name}님과 운동 기록을 모두 삭제할까요? 되돌릴 수 없습니다.`)) return;
     db.users = db.users.filter(x => x.id !== u.id); db.sessions = db.sessions.filter(s => s.userId !== u.id);
     if (db.currentUserId === u.id) db.currentUserId = db.users[0].id;
-    save(); renderChip(); renderUsers();
+    save(); queue({ op:'delUser', id:u.id }); renderChip(); renderUsers();
   }));
 }
 function openUser(id){
@@ -1137,21 +1191,23 @@ $('#userForm').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target;
   const data = { name:f.name.value.trim() || '이름 없음', weight:+f.weight.value, height:+f.height.value || null,
                  age:+f.age.value || null, sex:f.sex.value, color:f.color.value || PALETTE[0] };
-  if (editingId) Object.assign(db.users.find(x => x.id === editingId), data);
-  else { const u = { id:uid(), ...data }; db.users.push(u); }
-  save(); $('#dlgUser').close(); renderChip(); renderUsers();
+  let u = editingId && db.users.find(x => x.id === editingId);
+  if (u) Object.assign(u, data);
+  else { u = { id:editingId || uid(), ...data }; db.users.push(u); }
+  save(); qUser(u); $('#dlgUser').close(); renderChip(); renderUsers();
 });
 $$('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
 
 /* ---------- settings ---------- */
 function applyTheme(){ const t = db.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
 function renderSettings(){ $('#setWheel').value = db.settings.wheel; $('#setGear').value = db.settings.gear; $('#setTheme').value = db.settings.theme; $('#setGoal').value = db.settings.goal || 30; }
-$('#setGoal').addEventListener('change', e => { const v = Math.round(+e.target.value); if (v >= 5){ db.settings.goal = v; save(); renderGoal(); toast('저장했어요'); } });
-$('#setWheel').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.wheel = v; save(); toast('저장했어요'); } });
-$('#setGear').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.gear = v; save(); toast('저장했어요'); } });
+$('#setGoal').addEventListener('change', e => { const v = Math.round(+e.target.value); if (v >= 5){ db.settings.goal = v; save(); qSettings(); renderGoal(); toast('저장했어요'); } });
+$('#setWheel').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.wheel = v; save(); qSettings(); toast('저장했어요'); } });
+$('#setGear').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.gear = v; save(); qSettings(); toast('저장했어요'); } });
 $('#setTheme').addEventListener('change', e => { db.settings.theme = e.target.value; save(); applyTheme(); });
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(db, null, 2)], { type:'application/json' });
+  const { sync:_sync, ...data } = db;             // 시트 연결 정보(비밀번호)는 백업에 넣지 않음
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `실내자전거-백업-${new Date().toISOString().slice(0,10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1161,19 +1217,210 @@ $('#importFile').addEventListener('change', async e => {
   try{
     const d = JSON.parse(await file.text());
     if (!Array.isArray(d.users) || !Array.isArray(d.sessions) || !d.users.length) throw new Error('형식 오류');
-    if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 불러옵니다. 현재 데이터는 대체됩니다. 계속할까요?`)) return;
-    const def = defaults(); db = { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) } };
-    save(); applyTheme(); renderChip(); renderSettings(); toast('불러오기 완료');
+    if (syncOn()){
+      if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 구글 시트에 합칩니다. 이미 있는 기록은 한 번만 저장돼요. 계속할까요?`)) return;
+      d.users.forEach(u => { const op = { op:'putUser', user:u }; applyLocal(op); db.sync.outbox.push(op); });
+      d.sessions.forEach(s => { const op = { op:'putSession', session:s }; applyLocal(op); db.sync.outbox.push(op); });
+      save(); renderChip(); scheduleSync(0); toast('시트에 합치는 중이에요');
+    } else {
+      if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 불러옵니다. 현재 데이터는 대체됩니다. 계속할까요?`)) return;
+      const def = defaults(), keep = db.sync;
+      db = { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) }, sync:keep };
+      if (!db.users.some(u => u.id === db.currentUserId)) db.currentUserId = db.users[0].id;
+      save(); applyTheme(); renderChip(); renderSettings(); toast('불러오기 완료');
+    }
   }catch(err){ toast('백업 파일을 읽을 수 없어요'); }
   e.target.value = '';
 });
 $('#resetBtn').addEventListener('click', () => {
-  if (!confirm('모든 사용자와 운동 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+  if (!confirm(syncOn()
+    ? '이 기기에 저장된 사용자와 운동 기록을 지우고 구글 시트 연결도 해제합니다. 구글 시트의 기록은 지워지지 않아요. 계속할까요?'
+    : '모든 사용자와 운동 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
   localStorage.removeItem(KEY); location.reload();
 });
 
+/* ---------- Google Sheets sync ---------- */
+// 모든 변경은 outbox 에 쌓았다가 시트로 보내고, 응답으로 받은 시트 전체 내용으로 이 기기의 데이터를 맞춥니다.
+const SYNC = { busy:false, timer:null, err:'' };
+const syncOn = () => !!(db.sync && db.sync.url && db.sync.key);
+function queue(op){
+  if (!syncOn()) return;
+  db.sync.outbox.push(op); save(); renderSyncState(); scheduleSync(800);
+}
+const qUser = u => queue({ op:'putUser', user:{ ...u } });
+const qSession = s => queue({ op:'putSession', session:{ ...s } });
+const qSettings = () => queue({ op:'putSettings', settings:{ wheel:db.settings.wheel, gear:db.settings.gear, goal:db.settings.goal } });
+function scheduleSync(ms){ clearTimeout(SYNC.timer); SYNC.timer = setTimeout(runSync, ms || 0); }
+
+async function callSheet(url, key, ops){
+  let res;
+  try{
+    res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify({ key, ops, v:1 }) });
+  }catch(e){
+    throw new Error(navigator.onLine === false ? '인터넷 연결이 없어요 — 연결되면 자동으로 보냅니다' : '시트에 연결하지 못했어요. 주소와 인터넷 연결을 확인하세요');
+  }
+  let j = null; try{ j = await res.json(); }catch(_){}
+  if (!j) throw new Error('응답을 읽지 못했어요. 배포할 때 액세스 권한을 "모든 사용자"로 했는지 확인하세요');
+  if (!j.ok) throw new Error(j.msg || j.error || '알 수 없는 오류');
+  return j.data;
+}
+
+function applyLocal(op){
+  const up = (list, item) => { const i = list.findIndex(x => x.id === item.id); if (i >= 0) list[i] = item; else list.push(item); };
+  if (op.op === 'putUser') up(db.users, { ...op.user });
+  else if (op.op === 'delUser'){ db.users = db.users.filter(u => u.id !== op.id); db.sessions = db.sessions.filter(s => s.userId !== op.id); }
+  else if (op.op === 'putSession') up(db.sessions, { ...op.session });
+  else if (op.op === 'delSession') db.sessions = db.sessions.filter(s => s.id !== op.id);
+  else if (op.op === 'putSettings') Object.assign(db.settings, op.settings);
+}
+const dataSig = () => JSON.stringify([db.users, db.sessions, db.settings.wheel, db.settings.gear, db.settings.goal, db.currentUserId]);
+
+function applySnapshot(data){
+  const before = dataSig();
+  db.users = data.users || []; db.sessions = data.sessions || [];
+  const st = data.settings || {};
+  ['wheel','gear','goal'].forEach(k => { if (st[k] > 0) db.settings[k] = st[k]; });
+  db.sync.outbox.forEach(applyLocal);                       // 아직 못 보낸 변경은 다시 반영
+  if (data.sheetUrl) db.sync.sheetUrl = data.sheetUrl;
+  if (!db.users.length){
+    const u = { id:uid(), name:'사용자 1', color:PALETTE[0], weight:70, height:170, age:35, sex:'M' };
+    db.users.push(u); db.sync.outbox.push({ op:'putUser', user:u });
+  }
+  if (!db.users.some(u => u.id === db.currentUserId)) db.currentUserId = db.users[0].id;
+  save();
+  if (dataSig() !== before) refreshViews();
+}
+function refreshViews(){
+  renderChip(); renderLive();
+  const v = ($('.view.active') || {}).id;
+  if (v === 'view-records') renderRecords();
+  else if (v === 'view-stats') renderStats();
+  else if (v === 'view-users') renderUsers();
+  else if (v === 'view-settings') ['wheel','gear','goal'].forEach(k => {
+    const el = $('#set' + k[0].toUpperCase() + k.slice(1)); if (el && document.activeElement !== el) el.value = db.settings[k];
+  });
+}
+
+async function runSync(){
+  if (!syncOn() || SYNC.busy) return;
+  SYNC.busy = true; renderSyncState();
+  const url = db.sync.url, n = db.sync.outbox.length, ops = db.sync.outbox.slice(0, n);
+  try{
+    const data = await callSheet(url, db.sync.key, ops);
+    if (db.sync.url !== url) return;                         // 그사이 연결이 해제됨
+    db.sync.outbox = db.sync.outbox.slice(n);
+    db.sync.lastSync = Date.now(); SYNC.err = '';
+    applySnapshot(data);
+  }catch(e){
+    SYNC.err = (e && e.message) || String(e);
+  }finally{
+    SYNC.busy = false; renderSyncState();
+    if (syncOn() && db.sync.outbox.length) scheduleSync(SYNC.err ? 30000 : 300);
+  }
+}
+
+function syncState(){
+  if (!syncOn()) return ['off', '연결 안 됨'];
+  if (SYNC.busy) return ['busy', '동기화 중…'];
+  const n = db.sync.outbox.length;
+  if (SYNC.err) return ['err', n ? `${SYNC.err} (보낼 변경 ${n}건은 이 기기에 보관 중)` : SYNC.err];
+  if (n) return ['wait', `시트에 보낼 변경 ${n}건 대기 중`];
+  return ['ok', db.sync.lastSync ? `✓ 동기화됨 · ${ago(db.sync.lastSync)}` : '연결됨'];
+}
+function ago(t){
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return '방금'; if (s < 3600) return `${Math.floor(s/60)}분 전`;
+  const d = new Date(t); return `${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+let lastSyncUi = '';
+function renderSyncState(){
+  const [cls, txt] = syncState(), link = syncOn() ? db.sync.sheetUrl : '';
+  const sig = cls + txt + link;
+  if (sig === lastSyncUi) return; lastSyncUi = sig;
+  const chip = $('#syncChip');
+  chip.hidden = cls === 'off'; chip.className = 'sync-chip ' + cls; chip.title = '구글 시트: ' + txt;
+  chip.innerHTML = ic(cls === 'busy' ? 'rpm' : cls === 'err' ? 'cloudOff' : 'cloud');
+  const badge = $('#syncBadge');
+  badge.className = 'sync-badge ' + cls;
+  badge.textContent = { off:'연결 안 됨', busy:'동기화 중', err:'확인 필요', wait:'보내는 중', ok:'연결됨' }[cls];
+  const stEl = $('#syncStatus');
+  stEl.textContent = txt; stEl.className = 'ble-status' + (cls === 'err' ? ' err' : cls === 'ok' ? ' ok' : '');
+  ['#syncOpen', '#openSheetBtn'].forEach(sel => { const a = $(sel); a.hidden = !link; if (link) a.href = link; });
+}
+function renderSyncSettings(){
+  const on = syncOn();
+  $('#syncForm').hidden = on; $('#syncLinked').hidden = !on;
+  lastSyncUi = ''; renderSyncState();
+}
+
+// 처음 연결할 때: 이 기기에만 있던 사용자·기록을 시트에 합칠 목록 만들기
+function planMerge(data){
+  const ops = [], remap = {};
+  const serverU = new Set(data.users.map(u => u.id)), serverS = new Set(data.sessions.map(s => s.id));
+  const idByName = new Map(data.users.map(u => [String(u.name).trim(), u.id]));
+  let users = 0, sessions = 0;
+  db.users.forEach(u => {
+    if (serverU.has(u.id)) return;
+    const same = idByName.get(String(u.name).trim());
+    if (same){ remap[u.id] = same; return; }                    // 같은 이름 → 시트의 사용자로 합침
+    if (data.users.length && !db.sessions.some(s => s.userId === u.id)) return;   // 기록 없는 기본 사용자는 올리지 않음
+    ops.push({ op:'putUser', user:{ ...u } }); users++;
+  });
+  db.sessions.forEach(s => {
+    if (serverS.has(s.id)) return;
+    ops.push({ op:'putSession', session:{ ...s, userId:remap[s.userId] || s.userId } }); sessions++;
+  });
+  if (!(data.settings && data.settings.wheel > 0))
+    ops.push({ op:'putSettings', settings:{ wheel:db.settings.wheel, gear:db.settings.gear, goal:db.settings.goal } });
+  return { ops, remap, users, sessions };
+}
+
+$('#syncConnect').addEventListener('click', async () => {
+  const url = $('#syncUrl').value.trim(), key = $('#syncKey').value.trim();
+  if (!/^https:\/\/script\.google\.com\/\S+\/exec\/?$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)){
+    toast('Apps Script 웹 앱 주소(…/exec 로 끝나는 주소)를 붙여넣어 주세요'); return;
+  }
+  if (!key){ toast('가족 비밀번호를 입력해 주세요'); return; }
+  const btn = $('#syncConnect'); btn.disabled = true;
+  try{
+    const data = await callSheet(url, key, []);
+    const plan = planMerge(data);
+    if (plan.users + plan.sessions > 0 && !confirm(
+      `시트에는 사용자 ${data.users.length}명, 운동 기록 ${data.sessions.length}건이 있어요.\n` +
+      `이 기기에만 있는 ${plan.sessions ? `기록 ${plan.sessions}건` : ''}${plan.sessions && plan.users ? '과 ' : ''}${plan.users ? `사용자 ${plan.users}명` : ''}을 시트에 합칠까요?\n\n(취소하면 연결하지 않아요)`)) return;
+    if (plan.remap[db.currentUserId]) db.currentUserId = plan.remap[db.currentUserId];
+    db.sync = { url, key, outbox:plan.ops, lastSync:Date.now(), sheetUrl:data.sheetUrl || '' };
+    SYNC.err = ''; $('#syncKey').value = '';
+    applySnapshot(data);
+    renderSyncSettings(); renderSettings();
+    toast('구글 시트에 연결했어요');
+    if (db.sync.outbox.length) scheduleSync(0);
+  }catch(e){
+    toast((e && e.message) || '연결하지 못했어요');
+  }finally{ btn.disabled = false; }
+});
+$('#syncNow').addEventListener('click', () => scheduleSync(0));
+$('#syncChip').addEventListener('click', () => { show('settings'); scheduleSync(0); });
+$('#syncOff').addEventListener('click', () => {
+  const n = db.sync.outbox.length;
+  if (!confirm(n ? `아직 시트에 보내지 못한 변경이 ${n}건 있어요. 지금 해제하면 이 변경은 시트에 올라가지 않아요. 해제할까요?`
+                 : '구글 시트 연결을 해제할까요? 이 기기에 있는 기록은 그대로 남아요.')) return;
+  clearTimeout(SYNC.timer); SYNC.err = '';
+  db.sync = defaults().sync; save(); renderSyncSettings();
+});
+setInterval(() => {
+  if (!syncOn()) return;
+  renderSyncState();
+  if (!document.hidden && !SYNC.busy && Date.now() - (db.sync.lastSync || 0) > 5 * 60 * 1000) scheduleSync(0);
+}, 20000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && syncOn() && Date.now() - (db.sync.lastSync || 0) > 20000) scheduleSync(0);
+});
+window.addEventListener('online', () => { if (syncOn()) scheduleSync(0); });
+
 /* ---------- init ---------- */
 hydrateIcons(); applyTheme(); renderChip(); setMode(mode); setLevel(level); setManual(60); updateCtrl(); renderLive();
+renderSyncSettings(); if (syncOn()) scheduleSync(0);
 })();
 </script>
 </body>
