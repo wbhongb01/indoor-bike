@@ -539,7 +539,8 @@ a.btn{text-decoration:none;color:inherit}
         <label class="btn" style="display:inline-flex;align-items:center">백업 불러오기<input type="file" id="importFile" accept="application/json,.json" hidden></label>
         <button class="btn danger" id="resetBtn">모든 데이터 삭제</button>
       </div>
-      <p class="small-note">구글 시트에 연결하지 않으면 데이터는 이 기기의 브라우저에만 저장됩니다. 브라우저 데이터를 지우기 전에 백업해 두세요.</p>
+      <p class="small-note">구글 시트에 연결하지 않으면 데이터는 이 기기의 브라우저에만 저장됩니다. 브라우저 데이터를 지우기 전에 백업해 두세요.<br>
+        시트에 연결된 상태에서 내보내면 연결 정보도 함께 넣을 수 있어요. 그 파일을 다른 기기에서 불러오면 시트 연결과 사용자·기록·계산 설정이 한 번에 맞춰져요.</p>
     </div>
    </div>
   </section>
@@ -1219,31 +1220,56 @@ $('#setWheel').addEventListener('change', e => { const v = +e.target.value; if (
 $('#setGear').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ db.settings.gear = v; save(); qSettings(); toast('저장했어요'); } });
 $('#setTheme').addEventListener('change', e => { db.settings.theme = e.target.value; save(); applyTheme(); });
 $('#exportBtn').addEventListener('click', () => {
-  const { sync:_sync, ...data } = db;             // 시트 연결 정보(비밀번호)는 백업에 넣지 않음
+  const { sync:s, ...data } = db;
+  // 시트 연결 정보(주소·비밀번호)는 물어보고 넣음 — 넣으면 이 파일을 불러온 기기가 바로 시트에 연결됨
+  if (syncOn() && confirm('구글 시트 연결 정보(주소·가족 비밀번호)도 백업 파일에 넣을까요?\n\n넣으면 이 파일을 불러온 기기가 바로 시트에 연결돼요. 파일은 가족에게만 보내세요.\n[취소]를 누르면 연결 정보 없이 저장해요.'))
+    data.sync = { url:s.url, key:s.key };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `실내자전거-백업-${new Date().toISOString().slice(0,10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 $('#importFile').addEventListener('change', async e => {
-  const file = e.target.files[0]; if (!file) return;
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  let d;
   try{
-    const d = JSON.parse(await file.text());
+    d = JSON.parse(await file.text());
     if (!Array.isArray(d.users) || !Array.isArray(d.sessions) || !d.users.length) throw new Error('형식 오류');
-    if (syncOn()){
-      if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 구글 시트에 합칩니다. 이미 있는 기록은 한 번만 저장돼요. 계속할까요?`)) return;
-      d.users.forEach(u => { const op = { op:'putUser', user:u }; applyLocal(op); db.sync.outbox.push(op); });
-      d.sessions.forEach(s => { const op = { op:'putSession', session:s }; applyLocal(op); db.sync.outbox.push(op); });
-      save(); renderChip(); scheduleSync(0); toast('시트에 합치는 중이에요');
-    } else {
-      if (!confirm(`사용자 ${d.users.length}명, 기록 ${d.sessions.length}건을 불러옵니다. 현재 데이터는 대체됩니다. 계속할까요?`)) return;
-      const def = defaults(), keep = db.sync;
-      db = { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) }, sync:keep };
-      if (!db.users.some(u => u.id === db.currentUserId)) db.currentUserId = db.users[0].id;
-      save(); applyTheme(); renderChip(); renderSettings(); toast('불러오기 완료');
-    }
-  }catch(err){ toast('백업 파일을 읽을 수 없어요'); }
-  e.target.value = '';
+  }catch(err){ toast('백업 파일을 읽을 수 없어요'); return; }
+  const bs = d.sync && d.sync.url && d.sync.key ? { url:normalizeSyncUrl(d.sync.url), key:String(d.sync.key) } : null;
+  const calc = {};                                       // 함께 맞출 계산 설정
+  ['wheel','gear','goal'].forEach(k => { if (d.settings && +d.settings[k] > 0) calc[k] = +d.settings[k]; });
+  const counts = `사용자 ${d.users.length}명, 기록 ${d.sessions.length}건`;
+
+  // ① 이미 시트에 연결된 기기: 백업 내용을 시트에 합침 (사용자·기록·계산 설정)
+  if (syncOn()){
+    const other = bs && bs.url !== db.sync.url ? '\n\n(백업에 적힌 시트가 아니라, 지금 연결된 시트에 합쳐요)' : '';
+    if (!confirm(`${counts}과 계산 설정(바퀴 둘레·기어비·목표 시간)을 구글 시트에 합칩니다. 이미 있는 기록은 한 번만 저장돼요. 계속할까요?${other}`)) return;
+    const push = op => { applyLocal(op); db.sync.outbox.push(op); };
+    d.users.forEach(u => push({ op:'putUser', user:u }));
+    d.sessions.forEach(s => push({ op:'putSession', session:s }));
+    if (Object.keys(calc).length) push({ op:'putSettings', settings:calc });
+    save(); refreshViews(); renderSettings(); renderSyncState(); scheduleSync(0);
+    toast('시트에 합치는 중이에요');
+    return;
+  }
+
+  // ② 연결 안 된 기기: 이 기기 데이터를 백업으로 바꾸고, 백업에 시트 정보가 있으면 연결까지
+  if (!confirm(bs
+    ? `${counts}을 불러오고, 백업에 저장된 구글 시트에 연결해서 함께 합칩니다.\n이 기기의 현재 데이터는 백업 내용으로 바뀌어요. 계속할까요?`
+    : `${counts}을 불러옵니다. 현재 데이터는 대체됩니다. 계속할까요?`)) return;
+  const def = defaults(), keep = db.sync;
+  db = { ...def, ...d, settings:{ ...def.settings, ...(d.settings||{}) }, sync:keep };
+  if (!db.users.some(u => u.id === db.currentUserId)) db.currentUserId = db.users[0].id;
+  save(); applyTheme(); renderChip(); renderSettings(); renderLive();
+  if (!bs){ toast('불러오기 완료'); return; }
+  try{
+    await connectSheet(bs.url, bs.key, { ask:false, forceSettings:true });
+    toast('불러오기 완료 — 구글 시트에 연결해서 합치는 중이에요');
+  }catch(err){
+    show('settings'); $('#syncUrl').value = bs.url; $('#syncKey').value = bs.key;
+    toast(`불러오기는 끝났어요. ${(err && err.message) || err} — 확인 후 [연결하기]를 눌러 주세요`);
+  }
 });
 $('#resetBtn').addEventListener('click', () => {
   if (!confirm(syncOn()
@@ -1367,7 +1393,8 @@ function renderSyncSettings(){
 }
 
 // 처음 연결할 때: 이 기기에만 있던 사용자·기록을 시트에 합칠 목록 만들기
-function planMerge(data){
+// forceSettings: 이 기기의 계산 설정으로 시트 설정을 덮어씀 (백업 불러오기)
+function planMerge(data, forceSettings){
   const ops = [], remap = {};
   const serverU = new Set(data.users.map(u => u.id)), serverS = new Set(data.sessions.map(s => s.id));
   const idByName = new Map(data.users.map(u => [String(u.name).trim(), u.id]));
@@ -1383,9 +1410,27 @@ function planMerge(data){
     if (serverS.has(s.id)) return;
     ops.push({ op:'putSession', session:{ ...s, userId:remap[s.userId] || s.userId } }); sessions++;
   });
-  if (!(data.settings && data.settings.wheel > 0))
+  if (forceSettings || !(data.settings && data.settings.wheel > 0))
     ops.push({ op:'putSettings', settings:{ wheel:db.settings.wheel, gear:db.settings.gear, goal:db.settings.goal } });
   return { ops, remap, users, sessions };
+}
+const validSyncUrl = url => /^https:\/\/script\.google\.com\/\S+\/exec\/?$/.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url);
+
+// 시트에 연결: 시트 내용을 받아 이 기기 데이터와 합치고 연결 정보를 저장. 사용자가 취소하면 false
+async function connectSheet(url, key, { ask = true, forceSettings = false } = {}){
+  if (!validSyncUrl(url)) throw new Error('Apps Script 웹 앱 주소(…/exec 로 끝나는 주소)가 아니에요');
+  const data = await callSheet(url, key, []);
+  const plan = planMerge(data, forceSettings);
+  if (ask && plan.users + plan.sessions > 0 && !confirm(
+    `시트에는 사용자 ${data.users.length}명, 운동 기록 ${data.sessions.length}건이 있어요.\n` +
+    `이 기기에만 있는 ${plan.sessions ? `기록 ${plan.sessions}건` : ''}${plan.sessions && plan.users ? '과 ' : ''}${plan.users ? `사용자 ${plan.users}명` : ''}을 시트에 합칠까요?\n\n(취소하면 연결하지 않아요)`)) return false;
+  if (plan.remap[db.currentUserId]) db.currentUserId = plan.remap[db.currentUserId];
+  db.sync = { url, key, outbox:plan.ops, lastSync:Date.now(), sheetUrl:data.sheetUrl || '' };
+  SYNC.err = '';
+  applySnapshot(data);
+  renderSyncSettings(); renderSettings();
+  if (db.sync.outbox.length) scheduleSync(0);
+  return true;
 }
 
 // 붙여넣은 글에서 웹 앱 주소만 골라냄 (배포 ID만 복사한 경우도 주소로 바꿔 줌)
@@ -1436,24 +1481,11 @@ function readConnectLink(){
 $('#syncConnect').addEventListener('click', async () => {
   const url = normalizeSyncUrl($('#syncUrl').value), key = $('#syncKey').value.trim();
   $('#syncUrl').value = url;
-  if (!/^https:\/\/script\.google\.com\/\S+\/exec\/?$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)){
-    toast('Apps Script 웹 앱 주소(…/exec 로 끝나는 주소)를 붙여넣어 주세요'); return;
-  }
+  if (!validSyncUrl(url)){ toast('Apps Script 웹 앱 주소(…/exec 로 끝나는 주소)를 붙여넣어 주세요'); return; }
   if (!key){ toast('가족 비밀번호를 입력해 주세요'); return; }
   const btn = $('#syncConnect'); btn.disabled = true;
   try{
-    const data = await callSheet(url, key, []);
-    const plan = planMerge(data);
-    if (plan.users + plan.sessions > 0 && !confirm(
-      `시트에는 사용자 ${data.users.length}명, 운동 기록 ${data.sessions.length}건이 있어요.\n` +
-      `이 기기에만 있는 ${plan.sessions ? `기록 ${plan.sessions}건` : ''}${plan.sessions && plan.users ? '과 ' : ''}${plan.users ? `사용자 ${plan.users}명` : ''}을 시트에 합칠까요?\n\n(취소하면 연결하지 않아요)`)) return;
-    if (plan.remap[db.currentUserId]) db.currentUserId = plan.remap[db.currentUserId];
-    db.sync = { url, key, outbox:plan.ops, lastSync:Date.now(), sheetUrl:data.sheetUrl || '' };
-    SYNC.err = ''; $('#syncKey').value = '';
-    applySnapshot(data);
-    renderSyncSettings(); renderSettings();
-    toast('구글 시트에 연결했어요');
-    if (db.sync.outbox.length) scheduleSync(0);
+    if (await connectSheet(url, key)){ $('#syncKey').value = ''; toast('구글 시트에 연결했어요'); }
   }catch(e){
     toast((e && e.message) || '연결하지 못했어요');
   }finally{ btn.disabled = false; }
