@@ -266,6 +266,9 @@ tbody tr{animation:rowIn .35s ease both}
 
 /* sync */
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
+.input-row{display:flex;gap:8px}
+.input-row input{flex:1;min-width:0}
+.input-row .btn{flex:none;padding:0 14px}
 a.btn{text-decoration:none;color:inherit}
 .small-note a{color:var(--blue);font-weight:600}
 .sync-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;flex:none;
@@ -496,9 +499,15 @@ a.btn{text-decoration:none;color:inherit}
         <a href="https://github.com/wbhongb01/indoor-bike/blob/main/google-sheets/README.md" target="_blank" rel="noopener">설정 방법 보기</a></p>
       <div id="syncForm">
         <div class="grid2">
-          <label class="field">연결 주소 (웹 앱 URL)<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false"></label>
+          <div class="field" style="grid-column:1/-1">연결 주소 (웹 앱 URL)
+            <div class="input-row">
+              <input id="syncUrl" type="text" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="연결 주소">
+              <button type="button" class="btn" id="pasteUrl"><i class="ic" data-icon="clipboard"></i>붙여넣기</button>
+            </div>
+          </div>
           <label class="field">가족 비밀번호<input id="syncKey" type="password" autocomplete="off"></label>
         </div>
+        <p class="small-note" style="margin:10px 0 0">다른 기기가 이미 연결되어 있다면, 그 기기의 <b>다른 기기 연결 링크</b>를 받아 열면 자동으로 채워져요.</p>
         <div class="row" style="margin-top:14px"><button class="btn primary" id="syncConnect"><i class="ic" data-icon="cloud"></i>연결하기</button></div>
       </div>
       <div id="syncLinked" hidden>
@@ -506,8 +515,10 @@ a.btn{text-decoration:none;color:inherit}
         <div class="row" style="margin-top:12px">
           <button class="btn primary" id="syncNow"><i class="ic" data-icon="rpm"></i>지금 동기화</button>
           <a class="btn" id="syncOpen" target="_blank" rel="noopener" hidden><i class="ic" data-icon="external"></i>시트 열기</a>
+          <button class="btn" id="syncShare"><i class="ic" data-icon="share"></i>다른 기기 연결 링크</button>
           <button class="btn danger" id="syncOff">연결 해제</button>
         </div>
+        <p class="small-note" style="margin:10px 0 0">연결 링크에는 가족 비밀번호가 들어 있어요. 가족에게만 보내세요.</p>
       </div>
     </div>
     <div class="card" style="padding:20px">
@@ -648,7 +659,9 @@ const ICONS = {
   cloud:'<path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9.5z"/>',
   cloudOff:'<path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9.5z"/><path d="M3 3l18 18"/>',
   sheet:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
-  external:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'
+  external:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  clipboard:'<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>'
 };
 const ic = n => `<i class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg></i>`;
 function hydrateIcons(root = document){ root.querySelectorAll('i.ic[data-icon]').forEach(i => { i.outerHTML = ic(i.dataset.icon); }); }
@@ -1375,8 +1388,54 @@ function planMerge(data){
   return { ops, remap, users, sessions };
 }
 
+// 붙여넣은 글에서 웹 앱 주소만 골라냄 (배포 ID만 복사한 경우도 주소로 바꿔 줌)
+function normalizeSyncUrl(text){
+  const t = String(text || '').trim();
+  const m = t.match(/https:\/\/script\.google\.com\/[^\s"'<>]+?\/exec/);
+  if (m) return m[0];
+  const id = t.match(/\bAKfy[\w-]{20,}/);
+  if (id) return `https://script.google.com/macros/s/${id[0]}/exec`;
+  return t;
+}
+$('#syncUrl').addEventListener('change', e => { e.target.value = normalizeSyncUrl(e.target.value); });
+$('#pasteUrl').addEventListener('click', async () => {
+  try{
+    const t = await navigator.clipboard.readText();
+    if (!t || !t.trim()){ toast('복사된 내용이 없어요. 웹 앱 URL을 먼저 복사하세요'); return; }
+    $('#syncUrl').value = normalizeSyncUrl(t); toast('붙여넣었어요');
+  }catch(e){
+    $('#syncUrl').focus();
+    toast('이 브라우저는 붙여넣기 버튼을 막고 있어요. 칸을 길게 누르거나 Ctrl+V로 붙여넣어 주세요');
+  }
+});
+
+// 다른 기기 연결 링크: 주소와 비밀번호를 링크의 # 뒷부분에 담음 (# 뒤는 서버로 전송되지 않음)
+const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
+$('#syncShare').addEventListener('click', async () => {
+  const link = `${location.origin}${location.pathname}#connect=${b64url(JSON.stringify({ u:db.sync.url, k:db.sync.key }))}`;
+  if (navigator.share){
+    try{ await navigator.share({ title:'실내자전거 연결', text:'실내자전거 트래커 구글 시트 연결 링크 (가족 비밀번호 포함 — 가족에게만)', url:link }); return; }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+  }
+  try{ await navigator.clipboard.writeText(link); toast('연결 링크를 복사했어요. 카톡 등으로 다른 기기에 보내서 여세요'); }
+  catch(e){ window.prompt('이 링크를 복사해서 다른 기기에서 여세요', link); }
+});
+function readConnectLink(){
+  const m = location.hash.match(/connect=([\w-]+)/);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);   // 주소창에서 비밀번호 지우기
+  let o; try{ o = JSON.parse(unb64url(m[1])); }catch(e){ toast('연결 링크가 올바르지 않아요'); return; }
+  show('settings');
+  if (syncOn()){ toast(db.sync.url === o.u ? '이미 이 시트에 연결되어 있어요' : '다른 시트에 연결되어 있어요. 연결 해제 후 다시 링크를 여세요'); return; }
+  $('#syncUrl').value = normalizeSyncUrl(o.u); $('#syncKey').value = o.k || '';
+  $('#syncCard').scrollIntoView({ block:'start' });
+  toast('연결 정보를 채웠어요. [연결하기]를 누르세요');
+}
+
 $('#syncConnect').addEventListener('click', async () => {
-  const url = $('#syncUrl').value.trim(), key = $('#syncKey').value.trim();
+  const url = normalizeSyncUrl($('#syncUrl').value), key = $('#syncKey').value.trim();
+  $('#syncUrl').value = url;
   if (!/^https:\/\/script\.google\.com\/\S+\/exec\/?$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)){
     toast('Apps Script 웹 앱 주소(…/exec 로 끝나는 주소)를 붙여넣어 주세요'); return;
   }
@@ -1421,6 +1480,7 @@ window.addEventListener('online', () => { if (syncOn()) scheduleSync(0); });
 /* ---------- init ---------- */
 hydrateIcons(); applyTheme(); renderChip(); setMode(mode); setLevel(level); setManual(60); updateCtrl(); renderLive();
 renderSyncSettings(); if (syncOn()) scheduleSync(0);
+readConnectLink(); window.addEventListener('hashchange', readConnectLink);
 })();
 </script>
 </body>
